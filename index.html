@@ -1,0 +1,782 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- meta y title se rellenan dinamicamente al cargar (ver <script> al final):
+       el endpoint /api/restaurante devuelve los datos del cliente actual. Aqui
+       dejamos valores por defecto como fallback si el fetch falla. -->
+  <meta name="description" content="Reserva mesa y descubre nuestra cocina." />
+  <title>Restaurante — reservas</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #1A120B;
+      --bg-soft: #241A12;
+      --cream: #F7EEDF;
+      --cream-soft: #ECE1CF;
+      --accent: #C0392B;
+      --accent-soft: #E07A5F;
+      --gold: #D4A24C;
+      --text: #2A2118;
+      --muted: #6B5E4A;
+
+      /* Widget chat (issue #55): colores propios para que el widget
+         pueda llevar paleta distinta de la landing si se embebe en
+         una web del cliente. Defaults heredan de la landing. */
+      --chat-bot-bg: #FFFFFF;
+      --chat-user-bg: var(--accent);
+      --chat-user-text: var(--cream);
+      --chat-fondo: var(--cream);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--cream);
+      color: var(--text);
+      line-height: 1.6;
+      font-weight: 300;
+    }
+
+    h1, h2, h3, .serif {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* NAV */
+    .nav {
+      position: sticky;
+      top: 0;
+      background: rgba(247, 238, 223, 0.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid rgba(0,0,0,0.06);
+      z-index: 50;
+      padding: 14px 0;
+    }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; }
+    .logo {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-size: 28px;
+      font-weight: 600;
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .logo small {
+      display: block;
+      font-family: 'Inter', sans-serif;
+      font-size: 10px;
+      font-weight: 400;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-top: -6px;
+    }
+    .nav-links { display: flex; gap: 28px; }
+    .nav-links a {
+      color: var(--text);
+      text-decoration: none;
+      font-size: 14px;
+      letter-spacing: 0.04em;
+    }
+    .nav-links a:hover { color: var(--accent); }
+    @media (max-width: 640px) { .nav-links { display: none; } }
+
+    /* HERO */
+    .hero {
+      min-height: 82vh;
+      background:
+        linear-gradient(135deg, rgba(26, 18, 11, 0.55), rgba(26, 18, 11, 0.75)),
+        radial-gradient(ellipse at top right, #8B4513 0%, transparent 50%),
+        radial-gradient(ellipse at bottom left, #C0392B 0%, transparent 50%),
+        #3B2817;
+      color: var(--cream);
+      display: flex;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-inner { position: relative; text-align: center; padding: 96px 24px; width: 100%; }
+    .hero h1 {
+      font-size: clamp(48px, 9vw, 92px);
+      line-height: 1.02;
+      margin-bottom: 16px;
+    }
+    .hero h1 .accent { color: var(--gold); font-style: italic; }
+    .hero .tagline {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: clamp(20px, 3vw, 26px);
+      color: var(--cream-soft);
+      margin-bottom: 12px;
+    }
+    .hero .sub {
+      max-width: 560px;
+      margin: 0 auto 40px;
+      font-size: 16px;
+      color: rgba(247, 238, 223, 0.85);
+    }
+    .cta-row { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-block;
+      padding: 14px 28px;
+      border-radius: 4px;
+      text-decoration: none;
+      font-size: 14px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 500;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      font-family: inherit;
+    }
+    .btn-primary { background: var(--accent); color: var(--cream); }
+    .btn-primary:hover { background: #A62E22; transform: translateY(-1px); }
+    .btn-ghost {
+      background: transparent;
+      color: var(--cream);
+      border-color: rgba(247, 238, 223, 0.4);
+    }
+    .btn-ghost:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* SECTION BASE */
+    section.block { padding: 96px 0; }
+    .section-label {
+      display: inline-block;
+      font-size: 11px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: clamp(34px, 5vw, 48px);
+      line-height: 1.1;
+      margin-bottom: 24px;
+      color: var(--text);
+    }
+
+    /* SOBRE */
+    .sobre { display: grid; grid-template-columns: 1fr 1.2fr; gap: 72px; align-items: center; }
+    @media (max-width: 820px) { .sobre { grid-template-columns: 1fr; gap: 36px; } }
+    .sobre-img {
+      aspect-ratio: 4 / 5;
+      background:
+        linear-gradient(180deg, transparent 40%, rgba(26,18,11,0.4)),
+        radial-gradient(circle at 30% 40%, #E07A5F 0%, transparent 50%),
+        #8B4513;
+      border-radius: 4px;
+      position: relative;
+      overflow: hidden;
+    }
+    .sobre-img::after {
+      content: "una paella se come despacio";
+      position: absolute;
+      bottom: 24px;
+      left: 24px;
+      right: 24px;
+      color: var(--cream);
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 20px;
+    }
+    .sobre p { color: var(--muted); font-size: 17px; margin-bottom: 20px; }
+    .sobre p strong { color: var(--text); font-weight: 500; }
+
+    /* ESPECIALIDADES */
+    .especialidades { background: var(--bg-soft); color: var(--cream); }
+    .especialidades .section-title { color: var(--cream); }
+    .platos-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 28px;
+      margin-top: 48px;
+    }
+    .plato { border-top: 1px solid rgba(247, 238, 223, 0.12); padding-top: 20px; }
+    .plato h3 { font-size: 24px; margin-bottom: 6px; color: var(--gold); }
+    .plato .precio {
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      color: var(--cream-soft);
+      margin-bottom: 8px;
+      letter-spacing: 0.04em;
+    }
+    .plato p { font-size: 14px; color: rgba(247, 238, 223, 0.75); }
+
+    /* INFO PRACTICA */
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 48px; margin-top: 40px; }
+    @media (max-width: 820px) { .info-grid { grid-template-columns: 1fr; gap: 32px; } }
+    .info-card h3 { font-size: 22px; color: var(--accent); margin-bottom: 12px; }
+    .info-card p, .info-card a { font-size: 15px; color: var(--text); text-decoration: none; }
+    .info-card a:hover { color: var(--accent); }
+
+    /* FOOTER */
+    footer {
+      background: var(--bg);
+      color: rgba(247, 238, 223, 0.7);
+      padding: 48px 0 32px;
+      text-align: center;
+      font-size: 13px;
+    }
+    footer .logo { color: var(--gold); margin-bottom: 8px; display: inline-block; }
+    footer a { color: rgba(247, 238, 223, 0.9); text-decoration: none; }
+    footer a:hover { color: var(--gold); }
+    .tiny { opacity: 0.6; margin-top: 24px; font-size: 11px; }
+
+    /* CHATBOT */
+    .chat-toggle {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: var(--cream);
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(192, 57, 43, 0.4);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s ease;
+    }
+    .chat-toggle:hover { transform: scale(1.05); }
+    .chat-toggle svg { width: 28px; height: 28px; }
+
+    .chat-window {
+      position: fixed;
+      bottom: 100px;
+      right: 24px;
+      width: 380px;
+      max-width: calc(100vw - 48px);
+      height: 560px;
+      max-height: calc(100vh - 140px);
+      background: var(--cream);
+      border-radius: 12px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      z-index: 100;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid rgba(0,0,0,0.08);
+    }
+    .chat-window.open { display: flex; animation: chatIn 0.25s ease; }
+    @keyframes chatIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .chat-head {
+      background: var(--bg-soft);
+      color: var(--cream);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .chat-head strong { font-family: 'Cormorant Garamond', serif; font-size: 20px; color: var(--gold); }
+    .chat-head small {
+      display: block;
+      font-size: 11px;
+      opacity: 0.7;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .chat-close {
+      background: transparent;
+      border: none;
+      color: var(--cream);
+      cursor: pointer;
+      opacity: 0.7;
+      font-size: 22px;
+      line-height: 1;
+    }
+    .chat-close:hover { opacity: 1; }
+
+    .chat-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: var(--chat-fondo);
+    }
+    .msg {
+      max-width: 85%;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .msg.user {
+      align-self: flex-end;
+      background: var(--chat-user-bg);
+      color: var(--chat-user-text);
+      border-bottom-right-radius: 4px;
+    }
+    .msg.bot {
+      align-self: flex-start;
+      background: var(--chat-bot-bg);
+      color: var(--text);
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-bottom-left-radius: 4px;
+    }
+    .msg.typing { opacity: 0.6; font-style: italic; }
+
+    .chat-foot {
+      border-top: 1px solid rgba(0, 0, 0, 0.06);
+      background: #FFFFFF;
+      padding: 12px;
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+    .chat-foot textarea {
+      flex: 1;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      border-radius: 20px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-family: inherit;
+      resize: none;
+      max-height: 100px;
+      background: #FFFFFF;
+    }
+    .chat-foot textarea:focus { outline: none; border-color: var(--accent); }
+    .chat-send {
+      background: var(--accent);
+      color: var(--cream);
+      border: none;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .chat-send:hover { background: #A62E22; }
+    .chat-send svg { width: 18px; height: 18px; }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="container nav-inner">
+      <a href="#" class="logo">
+        <span data-r="nombre">Casa Lola</span>
+        <small><span data-r="tipo">Arroceria</span> · <span data-r="ciudad">Valencia</span></small>
+      </a>
+      <div class="nav-links">
+        <a href="#sobre">La casa</a>
+        <a href="#arroces">Arroces</a>
+        <a href="#visita">Visitarnos</a>
+        <a href="#" onclick="abrirChat(); return false;" style="color: var(--accent); font-weight: 500;">Reservar</a>
+      </div>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="hero-inner container">
+      <div class="tagline" data-r="tagline">Desde 1987, en el barrio de Russafa</div>
+      <h1>El arroz como <span class="accent">ritual</span></h1>
+      <p class="sub">
+        Paellas al fuego, cocina mediterranea sin atajos y una mesa para
+        cada historia. En el corazon de Valencia.
+      </p>
+      <div class="cta-row">
+        <button class="btn btn-primary" onclick="abrirChat()">Reservar mesa</button>
+        <a href="#arroces" class="btn btn-ghost">Ver nuestros arroces</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="block" id="sobre">
+    <div class="container sobre">
+      <div class="sobre-img"></div>
+      <div>
+        <span class="section-label">La casa</span>
+        <h2 class="section-title">Una paella no se hace con prisa.</h2>
+        <p>
+          En <span data-r="nombre">Casa Lola</span> cocinamos a la antigua. El arroz se hace al fuego,
+          paso a paso, y tarda lo que tiene que tardar: <strong>35 minutos</strong>.
+          Cuando reserves, avisanos si quieres arroz y lo tendremos a punto
+          al llegar.
+        </p>
+        <p>
+          Somos una arroceria de barrio: 14 mesas, cocina abierta y el mismo
+          equipo desde hace mas de tres decadas. Cocina mediterranea honesta,
+          producto del Mercado Central y vinos de la Comunidad Valenciana.
+        </p>
+        <p>
+          Si tienes alergias o comes sin gluten, avisanos al reservar:
+          adaptamos la mayoria de platos sin drama.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="block especialidades" id="arroces">
+    <div class="container">
+      <span class="section-label" style="color: var(--gold);">Especialidades</span>
+      <h2 class="section-title">Nuestros arroces</h2>
+      <p style="color: rgba(247, 238, 223, 0.75); max-width: 620px;">
+        Todos se sirven a partir de 2 personas y requieren 35 minutos de
+        coccion. Conviene pedirlos al llegar, o avisar al reservar.
+      </p>
+
+      <div class="platos-grid">
+        <div class="plato">
+          <h3>Paella valenciana</h3>
+          <div class="precio">18 € / persona</div>
+          <p>Pollo de corral, conejo, garrofo, ferradura, azafran. La autentica.</p>
+        </div>
+        <div class="plato">
+          <h3>Arroz del senyoret</h3>
+          <div class="precio">20 € / persona</div>
+          <p>Marisco pelado: gambas, calamar y mejillon. Para comer sin ensuciarse.</p>
+        </div>
+        <div class="plato">
+          <h3>Arroz negro</h3>
+          <div class="precio">19 € / persona</div>
+          <p>Tinta de calamar, sepia y all i oli casero.</p>
+        </div>
+        <div class="plato">
+          <h3>Arroz a banda</h3>
+          <div class="precio">19 € / persona</div>
+          <p>Fumet de pescado de roca, all i oli y punto de limon.</p>
+        </div>
+        <div class="plato">
+          <h3>Arroz de verduras</h3>
+          <div class="precio">16 € / persona</div>
+          <p>Alcachofa, judia tierna, garrofo y pimiento. Vegetariano.</p>
+        </div>
+        <div class="plato">
+          <h3>Y mas en la carta</h3>
+          <div class="precio">— pregunta al asistente</div>
+          <p>Esgarraet, croquetas, lubina a la sal, cordero al horno, postres caseros.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="visita">
+    <div class="container">
+      <span class="section-label">Visitarnos</span>
+      <h2 class="section-title">Donde y cuando</h2>
+
+      <div class="info-grid">
+        <div class="info-card">
+          <h3>Direccion</h3>
+          <p data-r="direccion">C/ Conde Altea 12, 46005 Valencia</p>
+          <p style="margin-top: 12px;">
+            <a data-r-href-maps="direccion" href="https://maps.google.com/?q=Conde+Altea+12+Valencia" target="_blank" rel="noopener">Abrir en Google Maps →</a>
+          </p>
+        </div>
+        <div class="info-card">
+          <h3>Horario</h3>
+          <p>Martes a sabado</p>
+          <p>13:30 – 16:00 / 20:30 – 23:30</p>
+          <p style="margin-top: 8px;">Domingo solo comida</p>
+          <p style="color: var(--muted);">Lunes cerrado</p>
+        </div>
+        <div class="info-card">
+          <h3>Reservas</h3>
+          <p><a data-r-href-tel="telefono" href="tel:+34963123456" data-r="telefono">+34 963 12 34 56</a></p>
+          <p><a data-r-href-mail="email" href="mailto:reservas@casalola-valencia.es" data-r="email">reservas@casalola-valencia.es</a></p>
+          <p style="margin-top: 12px;">
+            <button class="btn btn-primary" style="padding: 10px 18px; font-size: 12px;" onclick="abrirChat()">Reservar por chat</button>
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container">
+      <div class="logo" data-r="nombre">Casa Lola</div>
+      <p data-r-tpl="{direccion} · {telefono}">C/ Conde Altea 12, 46005 Valencia · +34 963 12 34 56</p>
+      <p class="tiny" data-r-tpl="© 2026 {nombre}. Demo del sistema multicanal de Alnora IA.">© 2026 Casa Lola. Demo del sistema multicanal de Alnora IA.</p>
+    </div>
+  </footer>
+
+  <button class="chat-toggle" id="chatToggle" aria-label="Abrir chat de reservas">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>
+  </button>
+
+  <div class="chat-window" id="chatWindow">
+    <div class="chat-head">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span data-r-bot-avatar style="font-size: 22px; line-height: 1;">💬</span>
+        <div>
+          <strong data-r-bot-nombre data-r-fallback="nombre">Casa Lola</strong>
+          <small data-r-bot-descripcion>Reservas y carta</small>
+        </div>
+      </div>
+      <button class="chat-close" id="chatClose" aria-label="Cerrar chat">×</button>
+    </div>
+    <div class="chat-body" id="chatBody"></div>
+    <div class="chat-foot">
+      <textarea id="chatInput" rows="1" placeholder="Escribe tu mensaje..." maxlength="4000"></textarea>
+      <button class="chat-send" id="chatSend" aria-label="Enviar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="22" y1="2" x2="11" y2="13"/>
+          <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // Path relativo al origen actual. El HTML se sirve siempre desde el
+    // backend (GET /), asi que el fetch va al mismo host y no hay CORS.
+    const CHAT_API = "/web/chat";
+
+    const SESSION_KEY = "restaurante_session_id";
+
+    // ───────── Config dinamica del restaurante (issue #11) ─────────
+    // Al cargar, fetchea /api/restaurante y aplica: nombre, contacto,
+    // branding (colores CSS), tagline, welcome del chat. Esto hace que
+    // clonar el repo a otro cliente solo requiera editar
+    // config/restaurante.yaml.
+    //
+    // Selectores soportados en el HTML:
+    //   data-r="nombre"              -> reemplaza textContent con RESTAURANTE.nombre
+    //   data-r-tpl="hola {nombre}"   -> reemplaza textContent con template
+    //   data-r-href-tel="telefono"   -> href = "tel:+34..."
+    //   data-r-href-mail="email"     -> href = "mailto:..."
+    //   data-r-href-maps="direccion" -> href = "https://maps.google.com/?q=..."
+    let WELCOME = "Hola, soy el asistente. ¿En que te ayudo?";
+    let FALLBACK_PHONE = "";
+
+    async function cargarConfigRestaurante() {
+      try {
+        const res = await fetch("/api/restaurante");
+        if (!res.ok) return;
+        const R = await res.json();
+
+        // Title y meta description
+        if (R.nombre) document.title = `${R.nombre} — ${R.tipo || "reservas"}`;
+        const meta = document.querySelector('meta[name="description"]');
+        if (meta && R.nombre) {
+          meta.setAttribute("content", `${R.nombre} — ${R.tipo || ""} en ${R.ciudad || ""}. Reserva mesa y descubre nuestra carta.`);
+        }
+
+        // Campos simples via data-r
+        document.querySelectorAll("[data-r]").forEach(el => {
+          const key = el.getAttribute("data-r");
+          if (R[key] !== undefined && R[key] !== null && R[key] !== "") {
+            el.textContent = R[key];
+          }
+        });
+
+        // Templates via data-r-tpl="texto {key} texto"
+        document.querySelectorAll("[data-r-tpl]").forEach(el => {
+          const tpl = el.getAttribute("data-r-tpl");
+          el.textContent = tpl.replace(/\{(\w+)\}/g, (_, k) => R[k] ?? "");
+        });
+
+        // hrefs contextuales
+        document.querySelectorAll("[data-r-href-tel]").forEach(el => {
+          const key = el.getAttribute("data-r-href-tel");
+          if (R[key]) el.href = "tel:" + String(R[key]).replace(/\s/g, "");
+        });
+        document.querySelectorAll("[data-r-href-mail]").forEach(el => {
+          const key = el.getAttribute("data-r-href-mail");
+          if (R[key]) el.href = "mailto:" + R[key];
+        });
+        document.querySelectorAll("[data-r-href-maps]").forEach(el => {
+          const key = el.getAttribute("data-r-href-maps");
+          if (R[key]) el.href = "https://maps.google.com/?q=" + encodeURIComponent(R[key]);
+        });
+
+        // Landing: CSS custom properties (paleta principal)
+        const root = document.documentElement;
+        const landingColores = (R.landing && R.landing.colores) || (R.branding && R.branding.colores) || {};
+        if (landingColores.bg)     root.style.setProperty("--bg", landingColores.bg);
+        if (landingColores.cream)  root.style.setProperty("--cream", landingColores.cream);
+        if (landingColores.accent) root.style.setProperty("--accent", landingColores.accent);
+        if (landingColores.gold)   root.style.setProperty("--gold", landingColores.gold);
+        if (landingColores.text)   root.style.setProperty("--text", landingColores.text);
+
+        // Landing: favicon, OG image, title (issue #55).
+        // Si las rutas son vacias, no inyectamos nada (no rompe).
+        const landing = R.landing || {};
+        if (landing.favicon) {
+          let fav = document.querySelector('link[rel="icon"]');
+          if (!fav) {
+            fav = document.createElement("link");
+            fav.rel = "icon";
+            document.head.appendChild(fav);
+          }
+          fav.href = landing.favicon;
+        }
+        if (landing.og_image) {
+          let og = document.querySelector('meta[property="og:image"]');
+          if (!og) {
+            og = document.createElement("meta");
+            og.setAttribute("property", "og:image");
+            document.head.appendChild(og);
+          }
+          og.setAttribute("content", landing.og_image);
+        }
+
+        // Widget chat (issue #55): avatar, mensaje, colores propios.
+        // Si no esta el bloque widget_web, hereda del legacy branding.
+        const widget = R.widget_web || {};
+        const wColores = widget.colores || {};
+        if (wColores.burbuja_bot)     root.style.setProperty("--chat-bot-bg", wColores.burbuja_bot);
+        if (wColores.burbuja_usuario) root.style.setProperty("--chat-user-bg", wColores.burbuja_usuario);
+        if (wColores.fondo)           root.style.setProperty("--chat-fondo", wColores.fondo);
+
+        // Avatar emoji del bot en el header del chat
+        if (widget.avatar_emoji) {
+          document.querySelectorAll("[data-r-bot-avatar]").forEach(el => {
+            el.textContent = widget.avatar_emoji;
+          });
+        }
+
+        // Identidad del bot: nombre + descripcion en el header
+        const bot = R.bot || {};
+        if (bot.nombre) {
+          document.querySelectorAll("[data-r-bot-nombre]").forEach(el => {
+            el.textContent = bot.nombre;
+          });
+        }
+        if (bot.descripcion) {
+          document.querySelectorAll("[data-r-bot-descripcion]").forEach(el => {
+            el.textContent = bot.descripcion;
+          });
+        }
+
+        // Mensaje de bienvenida: prioridad widget_web > branding legacy
+        if (widget.mensaje_bienvenida) {
+          WELCOME = widget.mensaje_bienvenida;
+        } else if (R.branding && R.branding.welcome_chat) {
+          WELCOME = R.branding.welcome_chat;
+        }
+
+        if (R.telefono) FALLBACK_PHONE = R.telefono;
+      } catch (_e) {
+        // Silencioso: si falla, quedan los valores HTML como fallback
+      }
+    }
+
+    cargarConfigRestaurante();
+
+    const toggle = document.getElementById("chatToggle");
+    const windowEl = document.getElementById("chatWindow");
+    const closeBtn = document.getElementById("chatClose");
+    const body = document.getElementById("chatBody");
+    const input = document.getElementById("chatInput");
+    const sendBtn = document.getElementById("chatSend");
+
+    let sessionId = localStorage.getItem(SESSION_KEY) || null;
+    let pending = false;
+
+    function abrirChat() {
+      windowEl.classList.add("open");
+      if (body.children.length === 0) addMsg("bot", WELCOME);
+      input.focus();
+    }
+    function cerrarChat() { windowEl.classList.remove("open"); }
+
+    toggle.addEventListener("click", () => windowEl.classList.contains("open") ? cerrarChat() : abrirChat());
+    closeBtn.addEventListener("click", cerrarChat);
+
+    function escapeHtml(s) {
+      const tmp = document.createElement("div");
+      tmp.textContent = s;
+      return tmp.innerHTML;
+    }
+
+    function renderMarkdownBasico(text) {
+      // Escapamos HTML primero (evita XSS) y luego aplicamos reemplazos
+      // simples: **negrita** -> <strong>, *cursiva* -> <em>, saltos -> <br>.
+      let safe = escapeHtml(text);
+      safe = safe.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      safe = safe.replace(/(^|[\s\(])\*([^\*\n]+?)\*(?=[\s,.!?\)]|$)/g, "$1<em>$2</em>");
+      safe = safe.replace(/\n/g, "<br>");
+      return safe;
+    }
+
+    function addMsg(role, text) {
+      const div = document.createElement("div");
+      div.className = "msg " + role;
+      // Para mensajes del bot (role=bot) renderizamos markdown basico;
+      // los del usuario (role=user) van como texto plano.
+      if (role === "bot") {
+        div.innerHTML = renderMarkdownBasico(text);
+      } else {
+        div.textContent = text;
+      }
+      body.appendChild(div);
+      body.scrollTop = body.scrollHeight;
+      return div;
+    }
+
+    async function enviarMensaje() {
+      const texto = input.value.trim();
+      if (!texto || pending) return;
+      input.value = "";
+      input.style.height = "auto";
+      addMsg("user", texto);
+      const typing = addMsg("bot", "Escribiendo…");
+      typing.classList.add("typing");
+      pending = true;
+
+      try {
+        const res = await fetch(CHAT_API, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ session_id: sessionId, message: texto }),
+        });
+        const data = await res.json();
+        if (data.session_id) {
+          sessionId = data.session_id;
+          localStorage.setItem(SESSION_KEY, sessionId);
+        }
+        typing.innerHTML = renderMarkdownBasico(data.reply || "Lo siento, no he podido procesarlo.");
+        typing.classList.remove("typing");
+      } catch (e) {
+        const colaTel = FALLBACK_PHONE ? ` o llamanos al ${FALLBACK_PHONE}` : "";
+        typing.innerHTML = renderMarkdownBasico(`Lo siento, ahora mismo no puedo conectarme. Prueba en un momento${colaTel}.`);
+        typing.classList.remove("typing");
+      } finally {
+        pending = false;
+      }
+    }
+
+    sendBtn.addEventListener("click", enviarMensaje);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        enviarMensaje();
+      }
+    });
+    input.addEventListener("input", () => {
+      input.style.height = "auto";
+      input.style.height = Math.min(input.scrollHeight, 100) + "px";
+    });
+  </script>
+</body>
+</html>

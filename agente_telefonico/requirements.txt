@@ -1,0 +1,5 @@
+# Las dependencias son las mismas que el chatbot. La fuente unica de
+# verdad esta en el requirements.txt de la raiz del proyecto.
+# Se mantiene este archivo solo como referencia para quienes vengan
+# directamente a esta carpeta.
+-r ../requirements.txt

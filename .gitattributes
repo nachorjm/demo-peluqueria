@@ -1,0 +1,17 @@
+# Texto: normalizar final de línea a LF
+* text=auto eol=lf
+
+# Binarios: nunca tocar
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.otf binary
+*.zip binary

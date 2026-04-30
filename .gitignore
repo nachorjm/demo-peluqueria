@@ -1,0 +1,37 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editores
+.vscode/
+.idea/
+.claude/
+*.swp
+*.swo
+
+# Python (script de generación de PDFs)
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Variables de entorno (¡nunca subir claves!)
+.env
+.env.*
+!.env.example
+
+# Logs y temporales
+*.log
+tmp/
+temp/
+
+.vercel

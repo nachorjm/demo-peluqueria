@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Demo del sistema multicanal de IA de Alnora aplicado a un restaurante." />
+  <meta name="robots" content="noindex" />
+  <title>Demo del producto — Alnora IA</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #1A120B;
+      --bg-soft: #241A12;
+      --cream: #F7EEDF;
+      --cream-soft: #ECE1CF;
+      --accent: #C0392B;
+      --gold: #D4A24C;
+      --text: #2A2118;
+      --muted: #6B5E4A;
+      --card-bg: #FFFFFF;
+      --border: rgba(0, 0, 0, 0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--cream);
+      color: var(--text);
+      line-height: 1.65;
+      font-weight: 300;
+    }
+    h1, h2, h3, .serif {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-weight: 600;
+      letter-spacing: 0.005em;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* HEADER */
+    .topbar {
+      background: var(--bg);
+      color: var(--cream);
+      padding: 16px 32px;
+      border-bottom: 3px solid var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .topbar .brand {
+      color: var(--gold);
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 22px;
+      font-weight: 600;
+    }
+    .topbar .brand small {
+      display: block;
+      font-family: 'Inter', sans-serif;
+      font-size: 10px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: rgba(247, 238, 223, 0.6);
+      margin-top: -4px;
+    }
+    .topbar .vuelve a {
+      color: rgba(247, 238, 223, 0.85);
+      font-size: 13px;
+    }
+    .topbar .vuelve a:hover { color: var(--gold); text-decoration: none; }
+
+    /* HERO */
+    .hero {
+      padding: 72px 24px 48px;
+      text-align: center;
+      background: linear-gradient(180deg, var(--cream-soft), var(--cream));
+    }
+    .hero .label {
+      display: inline-block;
+      font-size: 11px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 14px;
+    }
+    .hero h1 {
+      font-size: clamp(34px, 5vw, 52px);
+      line-height: 1.05;
+      margin-bottom: 18px;
+      max-width: 760px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .hero h1 em {
+      color: var(--accent);
+      font-style: italic;
+    }
+    .hero p.intro {
+      max-width: 600px;
+      margin: 0 auto 24px;
+      font-size: 17px;
+      color: var(--muted);
+    }
+
+    /* CONTAINER */
+    main { max-width: 1080px; margin: 0 auto; padding: 24px; }
+
+    /* CANALES */
+    .canales {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 22px;
+      margin: 32px 0;
+    }
+    @media (max-width: 880px) { .canales { grid-template-columns: 1fr; } }
+
+    .canal {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: column;
+    }
+    .canal .icon {
+      font-size: 36px;
+      line-height: 1;
+      margin-bottom: 14px;
+    }
+    .canal h2 {
+      font-size: 24px;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+    .canal .resumen {
+      color: var(--muted);
+      font-size: 14.5px;
+      margin-bottom: 18px;
+    }
+    .canal .pasos {
+      list-style: none;
+      counter-reset: pasos;
+      margin-bottom: 22px;
+      flex: 1;
+    }
+    .canal .pasos li {
+      counter-increment: pasos;
+      padding-left: 28px;
+      position: relative;
+      margin-bottom: 10px;
+      font-size: 14px;
+      color: var(--text);
+    }
+    .canal .pasos li::before {
+      content: counter(pasos);
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 20px;
+      height: 20px;
+      background: var(--accent);
+      color: var(--cream);
+      border-radius: 50%;
+      font-size: 11px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .canal .pasos code {
+      font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+      font-size: 12.5px;
+      background: rgba(192, 57, 43, 0.08);
+      color: var(--accent);
+      padding: 1px 6px;
+      border-radius: 3px;
+    }
+    .canal .cta {
+      display: inline-block;
+      padding: 11px 18px;
+      background: var(--accent);
+      color: var(--cream);
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      text-align: center;
+    }
+    .canal .cta:hover { background: #A62E22; text-decoration: none; }
+    .canal .cta-ghost {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+    }
+    .canal .cta-ghost:hover { background: var(--accent); color: var(--cream); }
+    .canal .nota {
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    /* DUEÑO */
+    .dueno-block {
+      background: var(--bg);
+      color: var(--cream);
+      border-radius: 8px;
+      padding: 36px 32px;
+      margin: 48px 0 24px;
+    }
+    .dueno-block h2 {
+      color: var(--gold);
+      font-size: 28px;
+      margin-bottom: 12px;
+    }
+    .dueno-block p {
+      max-width: 620px;
+      margin-bottom: 20px;
+      color: rgba(247, 238, 223, 0.85);
+      font-size: 15px;
+    }
+    .dueno-block ul {
+      list-style: none;
+      max-width: 620px;
+      margin-bottom: 24px;
+    }
+    .dueno-block ul li {
+      padding: 6px 0 6px 22px;
+      position: relative;
+      color: rgba(247, 238, 223, 0.85);
+      font-size: 14.5px;
+    }
+    .dueno-block ul li::before {
+      content: "·";
+      position: absolute;
+      left: 6px;
+      color: var(--gold);
+      font-size: 22px;
+      line-height: 1;
+      top: 4px;
+    }
+    .dueno-block .acciones {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .dueno-block .btn-panel {
+      background: var(--gold);
+      color: var(--bg);
+      padding: 12px 22px;
+      border-radius: 4px;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      font-size: 13px;
+    }
+    .dueno-block .btn-panel:hover { background: #B98A3D; text-decoration: none; }
+
+    /* POR QUE */
+    .porque {
+      margin: 64px 0 32px;
+    }
+    .porque h2 {
+      font-size: 32px;
+      text-align: center;
+      margin-bottom: 32px;
+      color: var(--text);
+    }
+    .porque-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+    @media (max-width: 880px) { .porque-grid { grid-template-columns: 1fr; } }
+    .porque-item h3 {
+      font-size: 18px;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .porque-item p {
+      color: var(--muted);
+      font-size: 14.5px;
+    }
+
+    /* FOOTER */
+    footer {
+      background: var(--bg);
+      color: rgba(247, 238, 223, 0.65);
+      padding: 32px;
+      text-align: center;
+      font-size: 13px;
+    }
+    footer a { color: var(--gold); }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="brand">
+      Alnora IA
+      <small>Demo del producto</small>
+    </div>
+    <div class="vuelve">
+      <a href="/" data-r-tpl="← Web pública de {nombre}">← Web pública del restaurante</a>
+    </div>
+  </div>
+
+  <section class="hero">
+    <span class="label">Demo en vivo</span>
+    <h1>
+      Atiende reservas <em>24 horas</em><br/>
+      sin coger el teléfono
+    </h1>
+    <p class="intro" data-r-tpl="Esto es exactamente lo que ve un cliente final en {nombre}. Pruébalo en los 3 canales y mira cómo el dueño lo gestiona desde su panel.">
+      Esto es exactamente lo que ve un cliente final. Pruébalo en los 3 canales y mira cómo el dueño lo gestiona desde su panel.
+    </p>
+  </section>
+
+  <main>
+
+    <div class="canales">
+
+      <!-- CANAL 1: Web -->
+      <div class="canal">
+        <div class="icon">💬</div>
+        <h2>Chat web</h2>
+        <p class="resumen">Embebido en la web del restaurante. El cliente reserva sin levantar el teléfono.</p>
+        <ol class="pasos">
+          <li>Abre la <a href="/" data-r-tpl="web pública de {nombre}">web pública</a> en otra pestaña.</li>
+          <li>Pulsa el botón redondo abajo a la derecha.</li>
+          <li>Escribe: <code>quiero reservar para 4 el viernes a las 21:00</code></li>
+          <li>Sigue la conversación: el bot pide los datos que faltan y confirma.</li>
+        </ol>
+        <a href="/" class="cta">Probar el chat web →</a>
+        <div class="nota">Funciona en cualquier dispositivo. Idiomas detectados automáticamente.</div>
+      </div>
+
+      <!-- CANAL 2: WhatsApp -->
+      <div class="canal">
+        <div class="icon">📱</div>
+        <h2>WhatsApp</h2>
+        <p class="resumen">El canal favorito de los clientes españoles. El bot atiende reservas, modifica y cancela por chat.</p>
+        <ol class="pasos">
+          <li>Abre WhatsApp y guarda el número: <code data-wa-numero>+1 415 523 8886</code></li>
+          <li>Envía el mensaje: <code data-wa-keyword>join produce-go</code> (palabra clave del sandbox).</li>
+          <li>Cuando el bot te dé la bienvenida, escribe: <code>quiero reservar mesa</code></li>
+          <li>El bot guía la conversación igual que en el chat web.</li>
+        </ol>
+        <a href="#" data-wa-link class="cta">Abrir WhatsApp →</a>
+        <div class="nota">Modo sandbox de Twilio para la demo. En producción se usa un número propio del restaurante.</div>
+      </div>
+
+      <!-- CANAL 3: Voz -->
+      <div class="canal">
+        <div class="icon">📞</div>
+        <h2>Llamada</h2>
+        <p class="resumen">El agente Lola atiende llamadas reales, hace reservas y deriva a humano cuando no puede resolver.</p>
+        <ol class="pasos">
+          <li>Llama desde tu móvil al número: <code data-vapi-numero>(número aún no configurado — pídelo al comercial)</code></li>
+          <li>Saluda. Lola se presenta y pregunta qué necesitas.</li>
+          <li>Pídele reservar mesa. Conversación natural en español.</li>
+          <li>Si no puede resolver algo, te ofrece pasarte por WhatsApp para terminar por texto.</li>
+        </ol>
+        <a href="#" data-vapi-link class="cta cta-ghost">Llamar al agente →</a>
+        <div class="nota">Voz Azure ES-ES. Funciona 24/7. En producción se conecta al número fijo del restaurante.</div>
+      </div>
+
+    </div>
+
+    <!-- DUEÑO -->
+    <div class="dueno-block">
+      <h2>Y el dueño lo ve aquí</h2>
+      <p>Mientras los clientes reservan por los 3 canales, el dueño del restaurante ve TODO en un único panel:</p>
+      <ul>
+        <li>Calendario semanal y mensual con cada reserva codificada por canal.</li>
+        <li>Estadísticas: reservas/comensales por día, por turno, tasa de cancelación.</li>
+        <li>Sincronización con su Google Calendar / iPhone (botón "Sincronizar al móvil").</li>
+        <li>Email de aviso cada vez que entra, modifica o cancela una reserva.</li>
+        <li>Recordatorios automáticos por WhatsApp la noche anterior (reduce no-shows).</li>
+      </ul>
+      <div class="acciones">
+        <a href="/admin" class="btn-panel" target="_blank">Abrir el panel del dueño →</a>
+      </div>
+      <div class="nota" style="margin-top: 14px; color: rgba(247, 238, 223, 0.55); font-size: 12px;">
+        Pide la contraseña al comercial. Es la misma para toda la demo.
+      </div>
+    </div>
+
+    <!-- POR QUÉ -->
+    <section class="porque">
+      <h2>¿Por qué un restaurante quiere esto?</h2>
+      <div class="porque-grid">
+        <div class="porque-item">
+          <h3>Cero llamadas perdidas</h3>
+          <p>El agente Lola atiende a las 14:30 cuando estás emplatando. El cliente reserva en lugar de irse a la competencia.</p>
+        </div>
+        <div class="porque-item">
+          <h3>Menos no-shows</h3>
+          <p>Recordatorio automático WhatsApp la noche anterior. El cliente confirma o cancela. Mesa que se libera entra en lista de espera.</p>
+        </div>
+        <div class="porque-item">
+          <h3>Tiempo recuperado</h3>
+          <p>Reservas, modificaciones y cancelaciones se gestionan solas. Tu equipo se centra en cocinar y servir.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>
+      <strong style="color: var(--gold);">Alnora IA</strong> — Sistema multicanal de IA para restaurantes.
+    </p>
+    <p style="margin-top: 8px;">
+      ¿Preguntas? Escribe a <a href="mailto:gestionalnora@gmail.com">gestionalnora@gmail.com</a>
+    </p>
+  </footer>
+
+  <script>
+    // Personalizacion dinamica desde /api/restaurante.
+    // Reusa el patron data-r-tpl="texto {nombre} texto" del index.html.
+    // Numeros (WA, Vapi) se leen de variables JS expuestas por el endpoint
+    // /demo (que las inyecta como window.__DEMO_CONFIG).
+    async function init() {
+      // 1) Datos del restaurante para textos dinamicos
+      try {
+        const res = await fetch("/api/restaurante");
+        if (res.ok) {
+          const R = await res.json();
+          document.querySelectorAll("[data-r-tpl]").forEach(el => {
+            const tpl = el.getAttribute("data-r-tpl");
+            el.textContent = tpl.replace(/\{(\w+)\}/g, (_, k) => R[k] ?? "");
+          });
+          // Aplicar paleta del restaurante a la pagina demo
+          const c = (R.landing && R.landing.colores) || (R.branding && R.branding.colores) || {};
+          const root = document.documentElement;
+          if (c.bg)     root.style.setProperty("--bg", c.bg);
+          if (c.cream)  root.style.setProperty("--cream", c.cream);
+          if (c.accent) root.style.setProperty("--accent", c.accent);
+          if (c.gold)   root.style.setProperty("--gold", c.gold);
+          if (c.text)   root.style.setProperty("--text", c.text);
+        }
+      } catch (_e) { /* fallback silencioso */ }
+
+      // 2) Datos de demo (numeros WA / Vapi) inyectados por el endpoint
+      const cfg = window.__DEMO_CONFIG || {};
+      if (cfg.wa_numero) {
+        document.querySelectorAll("[data-wa-numero]").forEach(el => el.textContent = cfg.wa_numero);
+      }
+      if (cfg.wa_keyword) {
+        document.querySelectorAll("[data-wa-keyword]").forEach(el => el.textContent = cfg.wa_keyword);
+      }
+      // Link "Abrir WhatsApp" con palabra clave pre-rellenada
+      if (cfg.wa_numero) {
+        const num = cfg.wa_numero.replace(/[^\d]/g, "");
+        const texto = encodeURIComponent(cfg.wa_keyword || "");
+        const href = `https://wa.me/${num}${texto ? "?text=" + texto : ""}`;
+        document.querySelectorAll("[data-wa-link]").forEach(el => el.href = href);
+      }
+
+      if (cfg.vapi_numero) {
+        document.querySelectorAll("[data-vapi-numero]").forEach(el => el.textContent = cfg.vapi_numero);
+        const numV = cfg.vapi_numero.replace(/[^\d+]/g, "");
+        document.querySelectorAll("[data-vapi-link]").forEach(el => el.href = `tel:${numV}`);
+      } else {
+        // Sin numero Vapi, deshabilitar link
+        document.querySelectorAll("[data-vapi-link]").forEach(el => {
+          el.style.opacity = "0.5";
+          el.style.pointerEvents = "none";
+          el.textContent = "Pídelo al comercial";
+        });
+      }
+    }
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,965 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Panel de reservas</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.css" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #1A120B;
+      --bg-soft: #241A12;
+      --cream: #F7EEDF;
+      --cream-soft: #ECE1CF;
+      --accent: #C0392B;
+      --gold: #D4A24C;
+      --text: #2A2118;
+      --muted: #6B5E4A;
+      --border: rgba(0,0,0,0.1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--cream);
+      color: var(--text);
+      font-weight: 300;
+    }
+
+    h1, h2, h3 {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-weight: 500;
+    }
+
+    /* HEADER */
+    .topbar {
+      background: var(--bg-soft);
+      color: var(--cream);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 3px solid var(--accent);
+    }
+    .topbar .logo {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 26px;
+      font-weight: 600;
+      color: var(--gold);
+    }
+    .topbar .logo small {
+      display: block;
+      font-family: 'Inter', sans-serif;
+      font-size: 10px;
+      font-weight: 400;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: rgba(247, 238, 223, 0.6);
+      margin-top: -4px;
+    }
+    .topbar .status {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 13px;
+      color: rgba(247, 238, 223, 0.75);
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #4ADE80;
+      box-shadow: 0 0 8px #4ADE80;
+    }
+
+    /* MAIN */
+    main {
+      padding: 24px 32px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+    }
+    .stat-card .label {
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .stat-card .value {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 32px;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1;
+    }
+    .stat-card.accent .value { color: var(--accent); }
+    .stat-card.gold .value { color: #B8892E; }
+
+    /* LEGEND */
+    .legend {
+      display: flex;
+      gap: 18px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+
+    /* TABS */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 16px;
+      border-bottom: 2px solid var(--border);
+    }
+    .tab-btn {
+      background: transparent;
+      border: none;
+      padding: 12px 24px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 14px;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      border-bottom: 2px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+      font-weight: 500;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* CALENDAR */
+    #calendar {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+    }
+
+    /* STATS */
+    .stats-filter {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .stats-filter button {
+      background: white;
+      border: 1px solid var(--border);
+      padding: 8px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      transition: all 0.15s;
+    }
+    .stats-filter button:hover { border-color: var(--accent); color: var(--accent); }
+    .stats-filter button.active {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 20px;
+    }
+    @media (max-width: 820px) { .charts-grid { grid-template-columns: 1fr; } }
+    .chart-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+    }
+    .chart-card h3 {
+      font-size: 18px;
+      margin-bottom: 4px;
+      color: var(--text);
+    }
+    .chart-card .chart-sub {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 16px;
+    }
+    .chart-card.wide { grid-column: 1 / -1; }
+    .chart-wrapper { position: relative; height: 280px; }
+
+    /* Override FullCalendar con paleta */
+    .fc {
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+    }
+    .fc-toolbar-title {
+      font-family: 'Cormorant Garamond', serif !important;
+      font-weight: 500 !important;
+      color: var(--text);
+    }
+    .fc .fc-button {
+      background: var(--bg-soft) !important;
+      border: none !important;
+      color: var(--cream) !important;
+      text-transform: capitalize;
+      font-size: 13px;
+      padding: 6px 14px;
+    }
+    .fc .fc-button:hover,
+    .fc .fc-button-active {
+      background: var(--accent) !important;
+    }
+    .fc-event {
+      cursor: pointer;
+      border-radius: 3px;
+      padding: 2px 4px;
+      font-weight: 400;
+    }
+    .fc-event:hover { opacity: 0.9; }
+    .fc .fc-daygrid-day-number,
+    .fc .fc-col-header-cell-cushion {
+      color: var(--text);
+      text-decoration: none;
+    }
+    .fc-day-today {
+      background: rgba(212, 162, 76, 0.08) !important;
+    }
+
+    /* MODAL */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(26, 18, 11, 0.6);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: white;
+      border-radius: 12px;
+      padding: 32px;
+      width: 100%;
+      max-width: 460px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    }
+    .modal h2 {
+      font-size: 26px;
+      margin-bottom: 4px;
+      color: var(--accent);
+    }
+    .modal .sub {
+      color: var(--muted);
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+    .modal-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-top: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .modal-row .k {
+      color: var(--muted);
+      letter-spacing: 0.04em;
+    }
+    .modal-row .v { color: var(--text); font-weight: 500; text-align: right; }
+    .modal-foot {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 24px;
+    }
+    .btn {
+      padding: 10px 20px;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-secondary { background: transparent; color: var(--muted); border-color: var(--border); }
+    .btn-secondary:hover { border-color: var(--muted); }
+    .btn-danger { background: var(--accent); color: white; }
+    .btn-danger:hover { background: #A62E22; }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-left: 6px;
+    }
+    .badge-confirmada { background: #E8F5E9; color: #1F9650; }
+    .badge-cancelada { background: #EEE; color: #888; }
+    .badge-completada { background: #E3F2FD; color: #1976D2; }
+
+    /* TOAST */
+    .toasts {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 200;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 8px;
+    }
+    .toast {
+      background: var(--bg-soft);
+      color: var(--cream);
+      padding: 12px 18px;
+      border-radius: 8px;
+      border-left: 4px solid var(--gold);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+      max-width: 320px;
+      font-size: 13px;
+      animation: toastIn 0.3s ease;
+    }
+    .toast strong { color: var(--gold); }
+    @keyframes toastIn {
+      from { transform: translateX(20px); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="logo">
+      <span data-r="nombre">Casa Lola</span>
+      <small>Panel de reservas</small>
+    </div>
+    <div class="status">
+      <span class="status-dot"></span>
+      <span id="statusText">Conectado</span>
+    </div>
+  </div>
+
+  <main>
+    <div class="stats">
+      <div class="stat-card">
+        <div class="label">Hoy</div>
+        <div class="value" id="statHoy">—</div>
+      </div>
+      <div class="stat-card accent">
+        <div class="label">Esta semana</div>
+        <div class="value" id="statSemana">—</div>
+      </div>
+      <div class="stat-card gold">
+        <div class="label">Comensales (7 días)</div>
+        <div class="value" id="statComensales">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Canal más usado</div>
+        <div class="value" id="statCanal" style="font-size: 20px;">—</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="calendar">Calendario</button>
+      <button class="tab-btn" data-tab="stats">Estadísticas</button>
+      <button class="tab-btn" data-tab="sync">Sincronizar al móvil</button>
+    </div>
+
+    <!-- Panel Calendario -->
+    <div class="tab-panel active" id="panelCalendar">
+      <div class="legend">
+        <div class="legend-item"><span class="legend-dot" style="background: #2E86AB;"></span>Web</div>
+        <div class="legend-item"><span class="legend-dot" style="background: #1F9650;"></span>WhatsApp</div>
+        <div class="legend-item"><span class="legend-dot" style="background: #7D3C98;"></span>Voz</div>
+        <div class="legend-item"><span class="legend-dot" style="background: #C0392B;"></span>Escalación</div>
+        <div class="legend-item">
+          <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; color: var(--muted);">
+            <input type="checkbox" id="toggleCanceladas" style="cursor: pointer;">
+            Mostrar canceladas
+          </label>
+        </div>
+      </div>
+
+      <div id="calendar"></div>
+    </div>
+
+    <!-- Panel Estadisticas -->
+    <div class="tab-panel" id="panelStats">
+      <div class="stats-filter">
+        <button data-dias="7" class="active">7 días</button>
+        <button data-dias="30">30 días</button>
+        <button data-dias="90">90 días</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat-card">
+          <div class="label">Reservas (rango)</div>
+          <div class="value" id="statRangReservas">—</div>
+        </div>
+        <div class="stat-card accent">
+          <div class="label">Comensales mes</div>
+          <div class="value" id="statRangComensales">—</div>
+        </div>
+        <div class="stat-card gold">
+          <div class="label">Tasa cancelación</div>
+          <div class="value" id="statRangCancel">—</div>
+        </div>
+      </div>
+
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h3>Reservas por canal</h3>
+          <div class="chart-sub">De dónde vienen tus clientes</div>
+          <div class="chart-wrapper"><canvas id="chartCanal"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Hora pico por día</h3>
+          <div class="chart-sub">Comida vs cena, por día de la semana</div>
+          <div class="chart-wrapper"><canvas id="chartDiaTurno"></canvas></div>
+        </div>
+        <div class="chart-card wide">
+          <h3>Evolución diaria</h3>
+          <div class="chart-sub">Reservas confirmadas por día en el rango</div>
+          <div class="chart-wrapper"><canvas id="chartEvolucion"></canvas></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel Sincronizar al movil -->
+    <div class="tab-panel" id="panelSync">
+      <div class="chart-card" style="max-width: 760px; margin: 0 auto;">
+        <h3>Sincroniza tus reservas con el calendario del móvil</h3>
+        <div class="chart-sub" style="margin-bottom: 20px;">
+          Suscribe esta URL UNA vez en Google Calendar, Apple Calendar u Outlook
+          y verás tus reservas en el móvil sin entrar al panel. Las modificaciones
+          y cancelaciones se sincronizan solas.
+        </div>
+
+        <div id="syncEstado" style="margin-bottom: 16px;">
+          <div style="color: var(--muted); font-size: 14px;">Cargando…</div>
+        </div>
+
+        <div id="syncContenido" style="display: none;">
+          <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.08em;">
+            URL del feed
+          </label>
+          <div style="display: flex; gap: 8px; margin-bottom: 24px;">
+            <input id="syncUrl" type="text" readonly
+                   style="flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: 6px; font-family: ui-monospace, monospace; font-size: 13px; background: white; color: var(--text);"
+                   value="" />
+            <button class="btn btn-secondary" id="btnCopiarSync">Copiar</button>
+          </div>
+
+          <h3 style="font-size: 18px; margin-bottom: 12px;">Cómo añadirla a tu calendario</h3>
+          <div style="display: flex; flex-direction: column; gap: 14px;">
+            <div style="padding: 14px; border: 1px solid var(--border); border-radius: 8px; background: white;">
+              <div style="font-weight: 500; color: var(--text); margin-bottom: 4px;">📱 iPhone (Apple Calendar)</div>
+              <div style="font-size: 13px; color: var(--muted); line-height: 1.5;" id="syncInstrIphone">—</div>
+            </div>
+            <div style="padding: 14px; border: 1px solid var(--border); border-radius: 8px; background: white;">
+              <div style="font-weight: 500; color: var(--text); margin-bottom: 4px;">🌐 Google Calendar</div>
+              <div style="font-size: 13px; color: var(--muted); line-height: 1.5;" id="syncInstrGoogle">—</div>
+            </div>
+            <div style="padding: 14px; border: 1px solid var(--border); border-radius: 8px; background: white;">
+              <div style="font-weight: 500; color: var(--text); margin-bottom: 4px;">📧 Outlook</div>
+              <div style="font-size: 13px; color: var(--muted); line-height: 1.5;" id="syncInstrOutlook">—</div>
+            </div>
+          </div>
+
+          <div style="margin-top: 24px; padding: 14px; border-left: 3px solid var(--gold); background: rgba(212, 162, 76, 0.08); font-size: 13px; color: var(--text);">
+            <strong>Importante:</strong> esta URL contiene un token de acceso.
+            No la compartas con nadie ni la publiques en sitios públicos.
+            Si necesitas regenerarla, contacta con el equipo técnico.
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <h2 id="mName">—</h2>
+      <div class="sub"><span id="mBadge" class="badge">—</span> <span id="mFecha"></span></div>
+
+      <div class="modal-row"><span class="k">Personas</span><span class="v" id="mPersonas">—</span></div>
+      <div class="modal-row"><span class="k">Mesa</span><span class="v" id="mMesa">—</span></div>
+      <div class="modal-row"><span class="k">Teléfono</span><span class="v" id="mTelefono">—</span></div>
+      <div class="modal-row"><span class="k">Turno</span><span class="v" id="mTurno">—</span></div>
+      <div class="modal-row"><span class="k">Alergias</span><span class="v" id="mAlergias">—</span></div>
+      <div class="modal-row"><span class="k">Ocasión</span><span class="v" id="mOcasion">—</span></div>
+      <div class="modal-row"><span class="k">Notas</span><span class="v" id="mNotas">—</span></div>
+      <div class="modal-row"><span class="k">Canal</span><span class="v" id="mCanal">—</span></div>
+
+      <div class="modal-foot">
+        <button class="btn btn-secondary" onclick="cerrarModal()">Cerrar</button>
+        <button class="btn btn-danger" id="btnCancelar">Cancelar reserva</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toasts" id="toasts"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/locales/es.global.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <script>
+    const PASS_KEY = "restaurante_admin_pw";
+    let password = localStorage.getItem(PASS_KEY);
+
+    // Config dinamica del restaurante (issue #11): nombre y branding
+    // se leen de /api/restaurante para que el panel sirva a cualquier
+    // cliente tras editar config/restaurante.yaml.
+    (async function cargarConfigPanel() {
+      try {
+        const res = await fetch("/api/restaurante");
+        if (!res.ok) return;
+        const R = await res.json();
+        if (R.nombre) {
+          document.title = `Panel de reservas — ${R.nombre}`;
+        }
+        document.querySelectorAll("[data-r]").forEach(el => {
+          const key = el.getAttribute("data-r");
+          if (R[key] !== undefined && R[key] !== null && R[key] !== "") {
+            el.textContent = R[key];
+          }
+        });
+        // Aplicar paleta de colores del branding como CSS vars
+        const c = (R.branding && R.branding.colores) || {};
+        const root = document.documentElement;
+        if (c.bg)     root.style.setProperty("--bg", c.bg);
+        if (c.cream)  root.style.setProperty("--cream", c.cream);
+        if (c.accent) root.style.setProperty("--accent", c.accent);
+        if (c.gold)   root.style.setProperty("--gold", c.gold);
+        if (c.text)   root.style.setProperty("--text", c.text);
+        // Guardar el nombre para el prompt de password si hace falta
+        window.__restauranteNombre = R.nombre || "";
+      } catch (_e) { /* silencioso */ }
+    })();
+
+    if (!password) {
+      const nombre = window.__restauranteNombre || "";
+      password = prompt(`Contraseña del panel${nombre ? " " + nombre : ""}:`);
+      if (password) localStorage.setItem(PASS_KEY, password);
+    }
+
+    const statusText = document.getElementById("statusText");
+    const toastsEl = document.getElementById("toasts");
+    const modalEl = document.getElementById("modal");
+    let idsVistos = new Set();
+    let primerFetch = true;
+    let reservaAbierta = null;
+
+    async function apiGet(path) {
+      const res = await fetch(path, { headers: { "X-Admin-Password": password } });
+      if (res.status === 401) {
+        localStorage.removeItem(PASS_KEY);
+        alert("Contraseña incorrecta. Recarga la página.");
+        throw new Error("401");
+      }
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    }
+
+    async function apiPost(path) {
+      const res = await fetch(path, { method: "POST", headers: { "X-Admin-Password": password } });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    }
+
+    function showToast(html) {
+      const t = document.createElement("div");
+      t.className = "toast";
+      t.innerHTML = html;
+      toastsEl.appendChild(t);
+      setTimeout(() => t.remove(), 6000);
+    }
+
+    function rangoVisible(calendar) {
+      const view = calendar.view;
+      const start = view.currentStart.toISOString().slice(0, 10);
+      const end = new Date(view.currentEnd.getTime() - 1).toISOString().slice(0, 10);
+      return { desde: start, hasta: end };
+    }
+
+    let mostrarCanceladas = false;
+    const toggleCanceladasEl = document.getElementById("toggleCanceladas");
+    if (toggleCanceladasEl) {
+      toggleCanceladasEl.addEventListener("change", (e) => {
+        mostrarCanceladas = e.target.checked;
+        idsVistos.clear();
+        primerFetch = true;
+        cargarReservas(calendar, false);
+      });
+    }
+
+    async function cargarReservas(calendar, anunciarNuevas = false) {
+      const { desde, hasta } = rangoVisible(calendar);
+      try {
+        const qs = `desde=${desde}&hasta=${hasta}` + (mostrarCanceladas ? "&incluir_canceladas=true" : "");
+        const data = await apiGet(`/admin/api/reservas?${qs}`);
+        statusText.textContent = "Conectado";
+
+        const nuevas = [];
+        for (const ev of data.reservas) {
+          if (!idsVistos.has(ev.id)) {
+            if (!primerFetch && anunciarNuevas) nuevas.push(ev);
+            idsVistos.add(ev.id);
+          }
+        }
+        primerFetch = false;
+
+        calendar.removeAllEvents();
+        calendar.addEventSource(data.reservas);
+
+        actualizarStats(data.reservas);
+
+        for (const ev of nuevas) {
+          const canal = ev.extendedProps.canal_origen || "?";
+          showToast(
+            `<strong>Nueva reserva</strong><br>${ev.title} · ${ev.start.slice(0, 10)} ${ev.start.slice(11, 16)} · <em>${canal}</em>`
+          );
+        }
+      } catch (e) {
+        statusText.textContent = "Sin conexión";
+      }
+    }
+
+    function actualizarStats(reservas) {
+      const hoy = new Date().toISOString().slice(0, 10);
+      const hoyEnd = hoy;
+      const inicioSemana = new Date();
+      inicioSemana.setDate(inicioSemana.getDate() - inicioSemana.getDay() + 1);
+      const finSemana = new Date(inicioSemana);
+      finSemana.setDate(finSemana.getDate() + 6);
+
+      const confirmadas = reservas.filter(r => r.extendedProps.estado !== "cancelada");
+
+      document.getElementById("statHoy").textContent =
+        confirmadas.filter(r => r.start.slice(0, 10) === hoy).length;
+
+      const en7 = confirmadas.filter(r => {
+        const d = r.start.slice(0, 10);
+        return d >= inicioSemana.toISOString().slice(0, 10) && d <= finSemana.toISOString().slice(0, 10);
+      });
+      document.getElementById("statSemana").textContent = en7.length;
+      document.getElementById("statComensales").textContent =
+        en7.reduce((s, r) => s + (r.extendedProps.num_personas || 0), 0);
+
+      const canales = {};
+      for (const r of confirmadas) {
+        const c = r.extendedProps.canal_origen || "?";
+        canales[c] = (canales[c] || 0) + 1;
+      }
+      const entradas = Object.entries(canales).sort((a, b) => b[1] - a[1]);
+      document.getElementById("statCanal").textContent =
+        entradas.length ? entradas[0][0] : "—";
+    }
+
+    function abrirModal(ev) {
+      const p = ev.extendedProps;
+      reservaAbierta = ev.id;
+      // ev.start es un objeto Date; usamos ev.startStr (string ISO) para slicear.
+      const startStr = ev.startStr || (ev.start && ev.start.toISOString()) || "";
+      document.getElementById("mName").textContent = ev.title.replace(/ \(\d+p\)$/, "");
+      document.getElementById("mFecha").textContent = startStr.slice(0, 10) + " · " + startStr.slice(11, 16);
+      const badge = document.getElementById("mBadge");
+      badge.textContent = p.estado || "—";
+      badge.className = "badge badge-" + (p.estado || "confirmada");
+      document.getElementById("mPersonas").textContent = p.num_personas || "—";
+      document.getElementById("mMesa").textContent = p.mesa || "sin asignar";
+      document.getElementById("mTelefono").textContent = p.telefono || "—";
+      document.getElementById("mTurno").textContent = p.turno || "—";
+      document.getElementById("mAlergias").textContent = p.alergias || "ninguna";
+      document.getElementById("mOcasion").textContent = p.ocasion_especial || "—";
+      document.getElementById("mNotas").textContent = p.notas || "—";
+      document.getElementById("mCanal").textContent = p.canal_origen || "—";
+
+      document.getElementById("btnCancelar").style.display =
+        p.estado === "cancelada" ? "none" : "inline-block";
+      modalEl.classList.add("open");
+    }
+
+    function cerrarModal() {
+      modalEl.classList.remove("open");
+      reservaAbierta = null;
+    }
+
+    modalEl.addEventListener("click", (e) => {
+      if (e.target === modalEl) cerrarModal();
+    });
+
+    document.getElementById("btnCancelar").addEventListener("click", async () => {
+      if (!reservaAbierta) return;
+      if (!confirm("¿Cancelar esta reserva?")) return;
+      const idCancelando = reservaAbierta;
+      try {
+        await apiPost(`/admin/api/reservas/${idCancelando}/cancelar`);
+        showToast("<strong>Reserva cancelada</strong>");
+        cerrarModal();
+        // Quitar el evento del calendario INMEDIATAMENTE (feedback instantaneo).
+        const ev = calendar.getEventById(idCancelando);
+        if (ev) ev.remove();
+        idsVistos.delete(idCancelando);
+        // Refrescar en segundo plano (por si cambia algo mas).
+        cargarReservas(calendar, false);
+      } catch (e) {
+        alert("No se pudo cancelar: " + e.message);
+      }
+    });
+
+    // FullCalendar init
+    const calendarEl = document.getElementById("calendar");
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+      locale: "es",
+      initialView: "dayGridMonth",
+      height: "auto",
+      firstDay: 1,
+      headerToolbar: {
+        left: "prev,next today",
+        center: "title",
+        right: "dayGridMonth,timeGridWeek,timeGridDay",
+      },
+      buttonText: {
+        today: "Hoy",
+        month: "Mes",
+        week: "Semana",
+        day: "Día",
+      },
+      slotMinTime: "12:00:00",
+      slotMaxTime: "24:00:00",
+      allDaySlot: false,
+      nowIndicator: true,
+      eventClick: (info) => {
+        info.jsEvent.preventDefault();
+        abrirModal(info.event);
+      },
+      datesSet: () => {
+        idsVistos.clear();
+        primerFetch = true;
+        cargarReservas(calendar, false);
+      },
+    });
+    calendar.render();
+
+    // Polling cada 15s, anunciando nuevas
+    setInterval(() => cargarReservas(calendar, true), 15000);
+
+
+    // ════════════════════════════════════════════════════════════════
+    // TABS y ESTADISTICAS
+    // ════════════════════════════════════════════════════════════════
+
+    const tabBtns = document.querySelectorAll(".tab-btn");
+    const tabPanels = document.querySelectorAll(".tab-panel");
+
+    tabBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const tab = btn.dataset.tab;
+        tabBtns.forEach((b) => b.classList.toggle("active", b === btn));
+        tabPanels.forEach((p) => p.classList.toggle("active", p.id === "panel" + tab[0].toUpperCase() + tab.slice(1)));
+        if (tab === "stats") cargarStats(diasFiltro);
+        if (tab === "calendar") calendar.updateSize();
+        if (tab === "sync") cargarSyncIcal();
+      });
+    });
+
+    // ════════════════════════════════════════════════════════════════
+    // SYNC iCal — feed para suscribir desde el movil del duenno
+    // ════════════════════════════════════════════════════════════════
+    let syncCargado = false;
+    async function cargarSyncIcal() {
+      if (syncCargado) return;
+      const estado = document.getElementById("syncEstado");
+      const cont = document.getElementById("syncContenido");
+      try {
+        const base = window.location.origin;
+        const data = await apiGet(`/admin/api/ical/info?request_url_base=${encodeURIComponent(base)}`);
+        if (!data.configurado) {
+          estado.innerHTML = `<div style="padding: 14px; border-left: 3px solid var(--accent); background: rgba(192,57,43,0.08); color: var(--text); font-size: 14px;">${data.mensaje}</div>`;
+          return;
+        }
+        estado.style.display = "none";
+        cont.style.display = "block";
+        document.getElementById("syncUrl").value = data.url;
+        document.getElementById("syncInstrIphone").textContent = data.instrucciones.apple_calendar;
+        document.getElementById("syncInstrGoogle").textContent = data.instrucciones.google_calendar;
+        document.getElementById("syncInstrOutlook").textContent = data.instrucciones.outlook;
+        syncCargado = true;
+      } catch (e) {
+        estado.innerHTML = `<div style="padding: 14px; border-left: 3px solid var(--accent); background: rgba(192,57,43,0.08); color: var(--text); font-size: 14px;">Error cargando la info del feed: ${e.message || e}</div>`;
+      }
+    }
+
+    document.addEventListener("click", (e) => {
+      if (e.target && e.target.id === "btnCopiarSync") {
+        const input = document.getElementById("syncUrl");
+        if (!input || !input.value) return;
+        navigator.clipboard.writeText(input.value).then(() => {
+          showToast("<strong>URL copiada</strong> al portapapeles");
+        }).catch(() => {
+          // Fallback: seleccionar manualmente
+          input.select();
+          document.execCommand("copy");
+          showToast("<strong>URL copiada</strong>");
+        });
+      }
+    });
+
+    let diasFiltro = 7;
+    const filterBtns = document.querySelectorAll(".stats-filter button");
+    filterBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        filterBtns.forEach((b) => b.classList.toggle("active", b === btn));
+        diasFiltro = parseInt(btn.dataset.dias, 10);
+        cargarStats(diasFiltro);
+      });
+    });
+
+    const PALETTE = {
+      web: "#2E86AB",
+      whatsapp: "#1F9650",
+      voz: "#7D3C98",
+      escalacion: "#C0392B",
+      desconocido: "#9E9E9E",
+    };
+    const PALETTE_DAY = {
+      comida: "#D4A24C",
+      cena: "#7A1F1F",
+    };
+
+    let chartCanal = null, chartDiaTurno = null, chartEvolucion = null;
+
+    function isoMinusDays(n) {
+      const d = new Date();
+      d.setDate(d.getDate() - n);
+      return d.toISOString().slice(0, 10);
+    }
+
+    async function cargarStats(dias) {
+      const desde = isoMinusDays(dias);
+      const hasta = new Date().toISOString().slice(0, 10);
+      try {
+        const data = await apiGet(`/admin/api/stats?desde=${desde}&hasta=${hasta}`);
+        renderStats(data);
+      } catch (e) {
+        console.error("Error cargando stats:", e);
+      }
+    }
+
+    function renderStats(data) {
+      // KPIs del rango
+      document.getElementById("statRangReservas").textContent = data.total_confirmadas_rango;
+      document.getElementById("statRangComensales").textContent = data.kpis.comensales_mes;
+      document.getElementById("statRangCancel").textContent = data.kpis.tasa_cancelacion_pct + "%";
+
+      // Chart 1 — por canal (donut)
+      const canales = data.por_canal.map((x) => x.canal);
+      const totalesCanal = data.por_canal.map((x) => x.total);
+      const coloresCanal = canales.map((c) => PALETTE[c] || PALETTE.desconocido);
+
+      if (chartCanal) chartCanal.destroy();
+      chartCanal = new Chart(document.getElementById("chartCanal"), {
+        type: "doughnut",
+        data: {
+          labels: canales.map((c) => c.charAt(0).toUpperCase() + c.slice(1)),
+          datasets: [{ data: totalesCanal, backgroundColor: coloresCanal, borderWidth: 0 }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: "bottom" } },
+        },
+      });
+
+      // Chart 2 — dia de la semana x turno (barras agrupadas)
+      const dias = data.por_dia_turno.map((x) => x.dia.charAt(0).toUpperCase() + x.dia.slice(1));
+      const comida = data.por_dia_turno.map((x) => x.comida);
+      const cena = data.por_dia_turno.map((x) => x.cena);
+
+      if (chartDiaTurno) chartDiaTurno.destroy();
+      chartDiaTurno = new Chart(document.getElementById("chartDiaTurno"), {
+        type: "bar",
+        data: {
+          labels: dias,
+          datasets: [
+            { label: "Comida", data: comida, backgroundColor: PALETTE_DAY.comida },
+            { label: "Cena", data: cena, backgroundColor: PALETTE_DAY.cena },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: "bottom" } },
+          scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+        },
+      });
+
+      // Chart 3 — evolucion diaria (linea)
+      const fechas = data.por_dia.map((x) => x.fecha.slice(5));
+      const totales = data.por_dia.map((x) => x.total);
+
+      if (chartEvolucion) chartEvolucion.destroy();
+      chartEvolucion = new Chart(document.getElementById("chartEvolucion"), {
+        type: "line",
+        data: {
+          labels: fechas,
+          datasets: [{
+            label: "Reservas confirmadas",
+            data: totales,
+            borderColor: "#C0392B",
+            backgroundColor: "rgba(192, 57, 43, 0.1)",
+            tension: 0.3,
+            fill: true,
+            pointRadius: 3,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+        },
+      });
+    }
+  </script>
+</body>
+</html>

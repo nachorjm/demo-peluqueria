@@ -1,0 +1,41 @@
+name: Tests
+
+# CI: corre los smoke tests en cada push y PR a main.
+# Los evals (issue #12) NO se corren aqui porque requieren ANTHROPIC_API_KEY
+# real y gastan tokens; se ejecutan manualmente con `pytest -m eval`.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    name: Smoke tests (Python 3.12)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run smoke tests
+        # pytest.ini ya excluye los evals con `-m "not eval"` por defecto.
+        run: pytest -q

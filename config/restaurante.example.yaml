@@ -1,0 +1,164 @@
+# ════════════════════════════════════════════════════════════════════
+# Plantilla de configuracion — copia este fichero como
+# `config/restaurante.yaml` y rellenalo con los datos del cliente.
+# ════════════════════════════════════════════════════════════════════
+#
+# Flujo de onboarding de nuevo restaurante (menos de 1 hora):
+#
+#   1. cp config/restaurante.example.yaml config/restaurante.yaml
+#   2. Editar TODO este fichero (no dejar placeholders con "<...>").
+#   3. Crear proyecto Supabase nuevo, aplicar migraciones de
+#      supabase/migrations/ en orden.
+#   4. Poblar tabla `mesas` con las mesas reales del restaurante.
+#   5. Configurar .env del backend con las credenciales del cliente
+#      (ANTHROPIC_API_KEY, SUPABASE_*, RESEND_API_KEY, TWILIO_*).
+#   6. Cambiar imagenes del landing si hace falta (index.html).
+#   7. Desplegar en Railway conectando a la rama main.
+#
+# Campos obligatorios: todos. No dejes valores en blanco: si algun
+# dato aun no existe (ej. redes sociales), pon "" (string vacio).
+# ════════════════════════════════════════════════════════════════════
+
+# ─── Datos de contacto y ubicacion ─────────────────────────────────
+restaurante:
+  nombre: "<NOMBRE DEL RESTAURANTE>"              # ej: "La Taberna del Pollo"
+  tipo: "<TIPO DE COCINA>"                        # ej: "Cocina tradicional espanola"
+  ciudad: "<CIUDAD>"                              # ej: "Madrid"
+  barrio: "<BARRIO O ZONA>"                       # ej: "Chueca"
+  anno_fundacion: 1900                            # ej: 2010
+  direccion: "<DIRECCION COMPLETA>"               # ej: "C/ Gravina 7, 28004 Madrid"
+  telefono: "<+34 XXX XX XX XX>"                  # ej: "+34 915 22 33 44"
+  email: "<reservas@dominio.com>"                 # email operativo del restaurante
+  web: "<https://dominio.com>"                    # web publica del restaurante
+
+# ─── Capacidad y reglas de aforo ──────────────────────────────────
+capacidad:
+  aforo_max_por_turno: 50          # estimacion, solo fallback informativo
+  grupo_grande_desde: 12           # a partir de N comensales -> escalacion al duenno
+
+# ─── Politica de antelacion de reservas ───────────────────────────
+# Pon 0 para desactivar el limite. Ejemplos comunes:
+#   - Restaurante familiar relajado: ambos a 0 (acepta cualquier momento).
+#   - Restaurante con cocina compleja: minimo 24h, maximo 60 dias.
+#   - Restaurante de tapas / bar: minimo 1h, sin maximo.
+reservas:
+  antelacion_minima_horas: 0       # ej. 2 = "no se reserva con menos de 2h"
+  antelacion_maxima_dias: 0        # ej. 90 = "no se reserva con mas de 90 dias"
+
+# ─── Horarios ─────────────────────────────────────────────────────
+# Cada dia es una lista de turnos [[apertura, cierre], ...].
+# Lista vacia = cerrado.
+horarios:
+  lunes:     []
+  martes:    [["13:30", "16:00"], ["20:30", "23:30"]]
+  miercoles: [["13:30", "16:00"], ["20:30", "23:30"]]
+  jueves:    [["13:30", "16:00"], ["20:30", "23:30"]]
+  viernes:   [["13:30", "16:00"], ["20:30", "00:30"]]
+  sabado:    [["13:30", "16:00"], ["20:30", "00:30"]]
+  domingo:   [["13:30", "16:30"]]
+
+# ─── Identidad del bot (OBLIGATORIO si usa cualquier canal IA) ────
+# El bot tiene su propia personalidad. Se usa en los 3 canales
+# (web, WhatsApp, voz). Sin esto, los prompts caen a "asistente"
+# generico. Aplica este bloque SI usas alguno de los chatbots.
+bot:
+  nombre: "<NOMBRE DEL BOT>"                  # ej: "Lola", "Carmen", "Bruno"
+  descripcion: "<DESCRIPCION CORTA>"          # ej: "asistente de La Bocana"
+
+# ─── Landing publica (OPCIONAL) ────────────────────────────────────
+# Aplica este bloque SI el cliente va a usar la landing completa
+# (la que sirve el backend en GET /). Si solo quiere el widget
+# embebido en su web propia, BORRA este bloque entero.
+landing:
+  # Paleta CSS aplicada a la landing. Se inyecta como CSS custom properties.
+  colores:
+    bg:     "#1a1612"    # fondo oscuro general
+    cream:  "#f5ede0"    # color texto claro sobre bg
+    accent: "#c84b31"    # color de acento (botones, CTAs)
+    gold:   "#d4a24c"    # color secundario (destacados)
+    text:   "#3a2e26"    # color de texto en zonas claras
+  slogan: "<ESLOGAN 1 LINEA>"                   # ej: "La mejor tortilla de Madrid"
+  tagline: "<TAGLINE CORTO>"                    # ej: "Tradicion familiar desde 1950"
+  # Imagenes (rutas relativas o URLs absolutas). Si vacias se omiten
+  # del <head> sin romper la landing.
+  favicon: "/static/branding/favicon.png"       # tab del navegador
+  og_image: "/static/branding/og-image.png"     # preview al compartir link (1200x630)
+  logo: "/static/branding/logo.png"             # logo principal del restaurante
+
+# ─── Widget chat web embebido (OPCIONAL) ───────────────────────────
+# Aplica este bloque SI el cliente embebe el widget chat en alguna
+# web (sea la nuestra o la suya propia). Si el cliente solo usa WA
+# o voz, BORRA este bloque entero.
+widget_web:
+  avatar_emoji: "👩‍🍳"                          # icono del header del chat
+  # Primer mensaje del bot al abrir el chat. Si vacio, usa
+  # "Hola, soy el asistente de <NOMBRE>. ¿En que te ayudo?"
+  mensaje_bienvenida: "Hola, soy <BOT> de <NOMBRE>. ¿En que te ayudo?"
+  # Colores especificos del widget. Si vacios, hereda de landing.colores.
+  # Util si el widget se embede en una web del cliente con paleta distinta.
+  colores:
+    burbuja_bot: "#FFF5E6"
+    burbuja_usuario: "#c84b31"
+    fondo: "#FFFFFF"
+
+# ─── Notificaciones por email (RECOMENDADO) ────────────────────────
+# Branding de los emails que recibe el duenno via Resend (notificacion
+# de reservas nuevas, modificaciones, escalaciones).
+emails:
+  # Remitente. Formato: "Nombre <email@dominio.com>".
+  # Si vacio: usa env var RESEND_FROM, o fallback "<nombre> <onboarding@resend.dev>".
+  # Para cliente real: configurar dominio propio verificado en Resend.
+  from_address: ""
+  # URL publica ABSOLUTA del logo para incrustar arriba en el email.
+  # Vacio = email sin logo. Las rutas relativas no funcionan en email.
+  logo_url: ""
+
+# ─── URLs externas ────────────────────────────────────────────────
+google_review_url: "<https://g.page/r/XXXX/review>"   # dejar "" si aun no hay
+
+# ─── CORS origenes permitidos ─────────────────────────────────────
+# Dominios desde los que la landing puede llamar al backend.
+# Incluir localhost solo si se desarrolla en local.
+cors_origins:
+  - "<https://dominio-restaurante.com>"
+  - "<https://www.dominio-restaurante.com>"
+  - "http://localhost:3000"
+  - "http://127.0.0.1:3000"
+
+# ─── Carta ────────────────────────────────────────────────────────
+# Categorias validas: entrantes, arroces, carnes, pescados, postres, bebidas.
+# Puedes anadir mas categorias si el restaurante lo necesita.
+#
+# Cada plato tiene: nombre, precio (float), descripcion, alergenos,
+# vegetariano. Los arroces/platos que requieran grupo minimo: min_personas.
+# Platos con tiempo de elaboracion largo: tiempo_min (minutos).
+#
+# Alergenos validos (vocabulario controlado):
+#   gluten, lacteos, huevo, pescado, crustaceos, moluscos,
+#   frutos_secos, soja, apio, mostaza, sesamo, sulfitos,
+#   altramuces, cacahuetes
+carta:
+  entrantes:
+    - nombre: "<Plato 1>"
+      precio: 0.00
+      descripcion: "<Descripcion corta>"
+      alergenos: []
+      vegetariano: false
+    # ... anadir mas platos aqui
+
+  arroces:
+    - nombre: "<Arroz 1>"
+      precio: 0.00
+      descripcion: "<Descripcion>"
+      alergenos: []
+      vegetariano: false
+      min_personas: 2
+      tiempo_min: 35
+
+  carnes: []
+
+  pescados: []
+
+  postres: []
+
+  bebidas: []
