@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Panel de reservas</title>
+  <title>Panel de citas</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,14 +13,14 @@
 
   <style>
     :root {
-      --bg: #1A120B;
-      --bg-soft: #241A12;
-      --cream: #F7EEDF;
-      --cream-soft: #ECE1CF;
-      --accent: #C0392B;
+      --bg: #1A1612;
+      --bg-soft: #2A2028;
+      --cream: #F9ECEC;
+      --cream-soft: #F3DEDE;
+      --accent: #C87A8A;
       --gold: #D4A24C;
-      --text: #2A2118;
-      --muted: #6B5E4A;
+      --text: #3A2630;
+      --muted: #8A6B73;
       --border: rgba(0,0,0,0.1);
     }
 
@@ -60,7 +60,7 @@
       font-weight: 400;
       letter-spacing: 0.2em;
       text-transform: uppercase;
-      color: rgba(247, 238, 223, 0.6);
+      color: rgba(249, 236, 236, 0.6);
       margin-top: -4px;
     }
     .topbar .status {
@@ -68,7 +68,7 @@
       align-items: center;
       gap: 16px;
       font-size: 13px;
-      color: rgba(247, 238, 223, 0.75);
+      color: rgba(249, 236, 236, 0.75);
     }
     .status-dot {
       width: 8px;
@@ -223,7 +223,7 @@
     .chart-card.wide { grid-column: 1 / -1; }
     .chart-wrapper { position: relative; height: 280px; }
 
-    /* Override FullCalendar con paleta */
+    /* Override FullCalendar */
     .fc {
       font-family: 'Inter', sans-serif;
       font-size: 13px;
@@ -265,7 +265,7 @@
     .modal-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(26, 18, 11, 0.6);
+      background: rgba(58, 38, 48, 0.6);
       z-index: 100;
       display: none;
       align-items: center;
@@ -320,7 +320,7 @@
     }
     .btn-secondary { background: transparent; color: var(--muted); border-color: var(--border); }
     .btn-secondary:hover { border-color: var(--muted); }
-    .btn-danger { background: var(--accent); color: white; }
+    .btn-danger { background: #C0392B; color: white; }
     .btn-danger:hover { background: #A62E22; }
     .badge {
       display: inline-block;
@@ -367,8 +367,8 @@
 
   <div class="topbar">
     <div class="logo">
-      <span data-r="nombre">Casa Lola</span>
-      <small>Panel de reservas</small>
+      <span data-r="nombre">Salon Mara</span>
+      <small>Panel de citas</small>
     </div>
     <div class="status">
       <span class="status-dot"></span>
@@ -387,11 +387,11 @@
         <div class="value" id="statSemana">—</div>
       </div>
       <div class="stat-card gold">
-        <div class="label">Comensales (7 días)</div>
-        <div class="value" id="statComensales">—</div>
+        <div class="label">Citas (7 dias)</div>
+        <div class="value" id="statSiete">—</div>
       </div>
       <div class="stat-card">
-        <div class="label">Canal más usado</div>
+        <div class="label">Canal mas usado</div>
         <div class="value" id="statCanal" style="font-size: 20px;">—</div>
       </div>
     </div>
@@ -399,8 +399,8 @@
     <!-- Tabs -->
     <div class="tabs">
       <button class="tab-btn active" data-tab="calendar">Calendario</button>
-      <button class="tab-btn" data-tab="stats">Estadísticas</button>
-      <button class="tab-btn" data-tab="sync">Sincronizar al móvil</button>
+      <button class="tab-btn" data-tab="stats">Estadisticas</button>
+      <button class="tab-btn" data-tab="sync">Sincronizar al movil</button>
     </div>
 
     <!-- Panel Calendario -->
@@ -409,7 +409,7 @@
         <div class="legend-item"><span class="legend-dot" style="background: #2E86AB;"></span>Web</div>
         <div class="legend-item"><span class="legend-dot" style="background: #1F9650;"></span>WhatsApp</div>
         <div class="legend-item"><span class="legend-dot" style="background: #7D3C98;"></span>Voz</div>
-        <div class="legend-item"><span class="legend-dot" style="background: #C0392B;"></span>Escalación</div>
+        <div class="legend-item"><span class="legend-dot" style="background: #C0392B;"></span>Escalacion</div>
         <div class="legend-item">
           <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer; color: var(--muted);">
             <input type="checkbox" id="toggleCanceladas" style="cursor: pointer;">
@@ -424,40 +424,45 @@
     <!-- Panel Estadisticas -->
     <div class="tab-panel" id="panelStats">
       <div class="stats-filter">
-        <button data-dias="7" class="active">7 días</button>
-        <button data-dias="30">30 días</button>
-        <button data-dias="90">90 días</button>
+        <button data-dias="7" class="active">7 dias</button>
+        <button data-dias="30">30 dias</button>
+        <button data-dias="90">90 dias</button>
       </div>
 
       <div class="stats">
         <div class="stat-card">
-          <div class="label">Reservas (rango)</div>
-          <div class="value" id="statRangReservas">—</div>
+          <div class="label">Citas (rango)</div>
+          <div class="value" id="statRangCitas">—</div>
         </div>
         <div class="stat-card accent">
-          <div class="label">Comensales mes</div>
-          <div class="value" id="statRangComensales">—</div>
+          <div class="label">Ingresos estimados</div>
+          <div class="value" id="statRangIngresos">—</div>
         </div>
         <div class="stat-card gold">
-          <div class="label">Tasa cancelación</div>
+          <div class="label">Tasa cancelacion</div>
           <div class="value" id="statRangCancel">—</div>
         </div>
       </div>
 
       <div class="charts-grid">
         <div class="chart-card">
-          <h3>Reservas por canal</h3>
-          <div class="chart-sub">De dónde vienen tus clientes</div>
+          <h3>Citas por canal</h3>
+          <div class="chart-sub">De donde vienen tus clientas</div>
           <div class="chart-wrapper"><canvas id="chartCanal"></canvas></div>
         </div>
         <div class="chart-card">
-          <h3>Hora pico por día</h3>
-          <div class="chart-sub">Comida vs cena, por día de la semana</div>
-          <div class="chart-wrapper"><canvas id="chartDiaTurno"></canvas></div>
+          <h3>Citas por estilista</h3>
+          <div class="chart-sub">Reparto de carga del equipo</div>
+          <div class="chart-wrapper"><canvas id="chartEstilista"></canvas></div>
         </div>
-        <div class="chart-card wide">
-          <h3>Evolución diaria</h3>
-          <div class="chart-sub">Reservas confirmadas por día en el rango</div>
+        <div class="chart-card">
+          <h3>Por dia de la semana</h3>
+          <div class="chart-sub">Que dias se llena el salon</div>
+          <div class="chart-wrapper"><canvas id="chartDiaSemana"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <h3>Evolucion diaria</h3>
+          <div class="chart-sub">Citas confirmadas por dia en el rango</div>
           <div class="chart-wrapper"><canvas id="chartEvolucion"></canvas></div>
         </div>
       </div>
@@ -466,10 +471,10 @@
     <!-- Panel Sincronizar al movil -->
     <div class="tab-panel" id="panelSync">
       <div class="chart-card" style="max-width: 760px; margin: 0 auto;">
-        <h3>Sincroniza tus reservas con el calendario del móvil</h3>
+        <h3>Sincroniza tus citas con el calendario del movil</h3>
         <div class="chart-sub" style="margin-bottom: 20px;">
           Suscribe esta URL UNA vez en Google Calendar, Apple Calendar u Outlook
-          y verás tus reservas en el móvil sin entrar al panel. Las modificaciones
+          y veras tus citas en el movil sin entrar al panel. Las modificaciones
           y cancelaciones se sincronizan solas.
         </div>
 
@@ -488,7 +493,7 @@
             <button class="btn btn-secondary" id="btnCopiarSync">Copiar</button>
           </div>
 
-          <h3 style="font-size: 18px; margin-bottom: 12px;">Cómo añadirla a tu calendario</h3>
+          <h3 style="font-size: 18px; margin-bottom: 12px;">Como anadirla a tu calendario</h3>
           <div style="display: flex; flex-direction: column; gap: 14px;">
             <div style="padding: 14px; border: 1px solid var(--border); border-radius: 8px; background: white;">
               <div style="font-weight: 500; color: var(--text); margin-bottom: 4px;">📱 iPhone (Apple Calendar)</div>
@@ -506,8 +511,8 @@
 
           <div style="margin-top: 24px; padding: 14px; border-left: 3px solid var(--gold); background: rgba(212, 162, 76, 0.08); font-size: 13px; color: var(--text);">
             <strong>Importante:</strong> esta URL contiene un token de acceso.
-            No la compartas con nadie ni la publiques en sitios públicos.
-            Si necesitas regenerarla, contacta con el equipo técnico.
+            No la compartas con nadie ni la publiques en sitios publicos.
+            Si necesitas regenerarla, contacta con el equipo tecnico.
           </div>
         </div>
       </div>
@@ -519,18 +524,16 @@
       <h2 id="mName">—</h2>
       <div class="sub"><span id="mBadge" class="badge">—</span> <span id="mFecha"></span></div>
 
-      <div class="modal-row"><span class="k">Personas</span><span class="v" id="mPersonas">—</span></div>
-      <div class="modal-row"><span class="k">Mesa</span><span class="v" id="mMesa">—</span></div>
-      <div class="modal-row"><span class="k">Teléfono</span><span class="v" id="mTelefono">—</span></div>
-      <div class="modal-row"><span class="k">Turno</span><span class="v" id="mTurno">—</span></div>
+      <div class="modal-row"><span class="k">Estilista</span><span class="v" id="mEstilista">—</span></div>
+      <div class="modal-row"><span class="k">Servicios</span><span class="v" id="mServicios">—</span></div>
+      <div class="modal-row"><span class="k">Telefono</span><span class="v" id="mTelefono">—</span></div>
       <div class="modal-row"><span class="k">Alergias</span><span class="v" id="mAlergias">—</span></div>
-      <div class="modal-row"><span class="k">Ocasión</span><span class="v" id="mOcasion">—</span></div>
       <div class="modal-row"><span class="k">Notas</span><span class="v" id="mNotas">—</span></div>
       <div class="modal-row"><span class="k">Canal</span><span class="v" id="mCanal">—</span></div>
 
       <div class="modal-foot">
         <button class="btn btn-secondary" onclick="cerrarModal()">Cerrar</button>
-        <button class="btn btn-danger" id="btnCancelar">Cancelar reserva</button>
+        <button class="btn btn-danger" id="btnCancelar">Cancelar cita</button>
       </div>
     </div>
   </div>
@@ -542,19 +545,19 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
   <script>
-    const PASS_KEY = "restaurante_admin_pw";
+    const PASS_KEY = "salonmara_admin_pw";
     let password = localStorage.getItem(PASS_KEY);
 
-    // Config dinamica del restaurante (issue #11): nombre y branding
-    // se leen de /api/restaurante para que el panel sirva a cualquier
-    // cliente tras editar config/restaurante.yaml.
+    // Config dinamica del salon: nombre y branding se leen de /api/salon
+    // para que el panel sirva a cualquier cliente tras editar
+    // config/peluqueria.yaml.
     (async function cargarConfigPanel() {
       try {
-        const res = await fetch("/api/restaurante");
+        const res = await fetch("/api/salon");
         if (!res.ok) return;
         const R = await res.json();
         if (R.nombre) {
-          document.title = `Panel de reservas — ${R.nombre}`;
+          document.title = `Panel de citas — ${R.nombre}`;
         }
         document.querySelectorAll("[data-r]").forEach(el => {
           const key = el.getAttribute("data-r");
@@ -562,22 +565,21 @@
             el.textContent = R[key];
           }
         });
-        // Aplicar paleta de colores del branding como CSS vars
-        const c = (R.branding && R.branding.colores) || {};
+        // Aplicar paleta del branding como CSS vars
+        const c = (R.landing && R.landing.colores) || (R.branding && R.branding.colores) || {};
         const root = document.documentElement;
         if (c.bg)     root.style.setProperty("--bg", c.bg);
         if (c.cream)  root.style.setProperty("--cream", c.cream);
         if (c.accent) root.style.setProperty("--accent", c.accent);
         if (c.gold)   root.style.setProperty("--gold", c.gold);
         if (c.text)   root.style.setProperty("--text", c.text);
-        // Guardar el nombre para el prompt de password si hace falta
-        window.__restauranteNombre = R.nombre || "";
+        window.__salonNombre = R.nombre || "";
       } catch (_e) { /* silencioso */ }
     })();
 
     if (!password) {
-      const nombre = window.__restauranteNombre || "";
-      password = prompt(`Contraseña del panel${nombre ? " " + nombre : ""}:`);
+      const nombre = window.__salonNombre || "";
+      password = prompt(`Contrasena del panel${nombre ? " " + nombre : ""}:`);
       if (password) localStorage.setItem(PASS_KEY, password);
     }
 
@@ -586,13 +588,13 @@
     const modalEl = document.getElementById("modal");
     let idsVistos = new Set();
     let primerFetch = true;
-    let reservaAbierta = null;
+    let citaAbierta = null;
 
     async function apiGet(path) {
       const res = await fetch(path, { headers: { "X-Admin-Password": password } });
       if (res.status === 401) {
         localStorage.removeItem(PASS_KEY);
-        alert("Contraseña incorrecta. Recarga la página.");
+        alert("Contrasena incorrecta. Recarga la pagina.");
         throw new Error("401");
       }
       if (!res.ok) throw new Error("HTTP " + res.status);
@@ -627,19 +629,19 @@
         mostrarCanceladas = e.target.checked;
         idsVistos.clear();
         primerFetch = true;
-        cargarReservas(calendar, false);
+        cargarCitas(calendar, false);
       });
     }
 
-    async function cargarReservas(calendar, anunciarNuevas = false) {
+    async function cargarCitas(calendar, anunciarNuevas = false) {
       const { desde, hasta } = rangoVisible(calendar);
       try {
         const qs = `desde=${desde}&hasta=${hasta}` + (mostrarCanceladas ? "&incluir_canceladas=true" : "");
-        const data = await apiGet(`/admin/api/reservas?${qs}`);
+        const data = await apiGet(`/admin/api/citas?${qs}`);
         statusText.textContent = "Conectado";
 
         const nuevas = [];
-        for (const ev of data.reservas) {
+        for (const ev of data.citas) {
           if (!idsVistos.has(ev.id)) {
             if (!primerFetch && anunciarNuevas) nuevas.push(ev);
             idsVistos.add(ev.id);
@@ -648,30 +650,29 @@
         primerFetch = false;
 
         calendar.removeAllEvents();
-        calendar.addEventSource(data.reservas);
+        calendar.addEventSource(data.citas);
 
-        actualizarStats(data.reservas);
+        actualizarStats(data.citas);
 
         for (const ev of nuevas) {
           const canal = ev.extendedProps.canal_origen || "?";
           showToast(
-            `<strong>Nueva reserva</strong><br>${ev.title} · ${ev.start.slice(0, 10)} ${ev.start.slice(11, 16)} · <em>${canal}</em>`
+            `<strong>Nueva cita</strong><br>${ev.title} · ${ev.start.slice(0, 10)} ${ev.start.slice(11, 16)} · <em>${canal}</em>`
           );
         }
       } catch (e) {
-        statusText.textContent = "Sin conexión";
+        statusText.textContent = "Sin conexion";
       }
     }
 
-    function actualizarStats(reservas) {
+    function actualizarStats(citas) {
       const hoy = new Date().toISOString().slice(0, 10);
-      const hoyEnd = hoy;
       const inicioSemana = new Date();
       inicioSemana.setDate(inicioSemana.getDate() - inicioSemana.getDay() + 1);
       const finSemana = new Date(inicioSemana);
       finSemana.setDate(finSemana.getDate() + 6);
 
-      const confirmadas = reservas.filter(r => r.extendedProps.estado !== "cancelada");
+      const confirmadas = citas.filter(r => r.extendedProps.estado !== "cancelada");
 
       document.getElementById("statHoy").textContent =
         confirmadas.filter(r => r.start.slice(0, 10) === hoy).length;
@@ -681,8 +682,7 @@
         return d >= inicioSemana.toISOString().slice(0, 10) && d <= finSemana.toISOString().slice(0, 10);
       });
       document.getElementById("statSemana").textContent = en7.length;
-      document.getElementById("statComensales").textContent =
-        en7.reduce((s, r) => s + (r.extendedProps.num_personas || 0), 0);
+      document.getElementById("statSiete").textContent = en7.length;
 
       const canales = {};
       for (const r of confirmadas) {
@@ -696,20 +696,23 @@
 
     function abrirModal(ev) {
       const p = ev.extendedProps;
-      reservaAbierta = ev.id;
-      // ev.start es un objeto Date; usamos ev.startStr (string ISO) para slicear.
+      citaAbierta = ev.id;
       const startStr = ev.startStr || (ev.start && ev.start.toISOString()) || "";
-      document.getElementById("mName").textContent = ev.title.replace(/ \(\d+p\)$/, "");
+      // Title viene como "Nombre (Estilista) — Servicios"; lo dividimos para el modal.
+      const titlePartes = ev.title.split(" — ");
+      const nombreEstilista = titlePartes[0] || ev.title;
+      // Quitar el sufijo " (Estilista)"
+      const soloNombre = nombreEstilista.replace(/\s+\([^)]+\)$/, "");
+      document.getElementById("mName").textContent = soloNombre;
       document.getElementById("mFecha").textContent = startStr.slice(0, 10) + " · " + startStr.slice(11, 16);
       const badge = document.getElementById("mBadge");
       badge.textContent = p.estado || "—";
       badge.className = "badge badge-" + (p.estado || "confirmada");
-      document.getElementById("mPersonas").textContent = p.num_personas || "—";
-      document.getElementById("mMesa").textContent = p.mesa || "sin asignar";
+      document.getElementById("mEstilista").textContent = p.estilista || "—";
+      const servicios = Array.isArray(p.servicios) ? p.servicios.join(", ") : (p.servicios || "—");
+      document.getElementById("mServicios").textContent = servicios || "—";
       document.getElementById("mTelefono").textContent = p.telefono || "—";
-      document.getElementById("mTurno").textContent = p.turno || "—";
       document.getElementById("mAlergias").textContent = p.alergias || "ninguna";
-      document.getElementById("mOcasion").textContent = p.ocasion_especial || "—";
       document.getElementById("mNotas").textContent = p.notas || "—";
       document.getElementById("mCanal").textContent = p.canal_origen || "—";
 
@@ -720,7 +723,7 @@
 
     function cerrarModal() {
       modalEl.classList.remove("open");
-      reservaAbierta = null;
+      citaAbierta = null;
     }
 
     modalEl.addEventListener("click", (e) => {
@@ -728,19 +731,17 @@
     });
 
     document.getElementById("btnCancelar").addEventListener("click", async () => {
-      if (!reservaAbierta) return;
-      if (!confirm("¿Cancelar esta reserva?")) return;
-      const idCancelando = reservaAbierta;
+      if (!citaAbierta) return;
+      if (!confirm("¿Cancelar esta cita?")) return;
+      const idCancelando = citaAbierta;
       try {
-        await apiPost(`/admin/api/reservas/${idCancelando}/cancelar`);
-        showToast("<strong>Reserva cancelada</strong>");
+        await apiPost(`/admin/api/citas/${idCancelando}/cancelar`);
+        showToast("<strong>Cita cancelada</strong>");
         cerrarModal();
-        // Quitar el evento del calendario INMEDIATAMENTE (feedback instantaneo).
         const ev = calendar.getEventById(idCancelando);
         if (ev) ev.remove();
         idsVistos.delete(idCancelando);
-        // Refrescar en segundo plano (por si cambia algo mas).
-        cargarReservas(calendar, false);
+        cargarCitas(calendar, false);
       } catch (e) {
         alert("No se pudo cancelar: " + e.message);
       }
@@ -762,10 +763,10 @@
         today: "Hoy",
         month: "Mes",
         week: "Semana",
-        day: "Día",
+        day: "Dia",
       },
-      slotMinTime: "12:00:00",
-      slotMaxTime: "24:00:00",
+      slotMinTime: "09:00:00",
+      slotMaxTime: "21:00:00",
       allDaySlot: false,
       nowIndicator: true,
       eventClick: (info) => {
@@ -775,13 +776,13 @@
       datesSet: () => {
         idsVistos.clear();
         primerFetch = true;
-        cargarReservas(calendar, false);
+        cargarCitas(calendar, false);
       },
     });
     calendar.render();
 
     // Polling cada 15s, anunciando nuevas
-    setInterval(() => cargarReservas(calendar, true), 15000);
+    setInterval(() => cargarCitas(calendar, true), 15000);
 
 
     // ════════════════════════════════════════════════════════════════
@@ -814,7 +815,7 @@
         const base = window.location.origin;
         const data = await apiGet(`/admin/api/ical/info?request_url_base=${encodeURIComponent(base)}`);
         if (!data.configurado) {
-          estado.innerHTML = `<div style="padding: 14px; border-left: 3px solid var(--accent); background: rgba(192,57,43,0.08); color: var(--text); font-size: 14px;">${data.mensaje}</div>`;
+          estado.innerHTML = `<div style="padding: 14px; border-left: 3px solid var(--accent); background: rgba(200,122,138,0.12); color: var(--text); font-size: 14px;">${data.mensaje}</div>`;
           return;
         }
         estado.style.display = "none";
@@ -825,7 +826,7 @@
         document.getElementById("syncInstrOutlook").textContent = data.instrucciones.outlook;
         syncCargado = true;
       } catch (e) {
-        estado.innerHTML = `<div style="padding: 14px; border-left: 3px solid var(--accent); background: rgba(192,57,43,0.08); color: var(--text); font-size: 14px;">Error cargando la info del feed: ${e.message || e}</div>`;
+        estado.innerHTML = `<div style="padding: 14px; border-left: 3px solid var(--accent); background: rgba(200,122,138,0.12); color: var(--text); font-size: 14px;">Error cargando la info del feed: ${e.message || e}</div>`;
       }
     }
 
@@ -836,7 +837,6 @@
         navigator.clipboard.writeText(input.value).then(() => {
           showToast("<strong>URL copiada</strong> al portapapeles");
         }).catch(() => {
-          // Fallback: seleccionar manualmente
           input.select();
           document.execCommand("copy");
           showToast("<strong>URL copiada</strong>");
@@ -861,12 +861,10 @@
       escalacion: "#C0392B",
       desconocido: "#9E9E9E",
     };
-    const PALETTE_DAY = {
-      comida: "#D4A24C",
-      cena: "#7A1F1F",
-    };
+    // Tonos rosa empolvado para diferenciar estilistas
+    const PALETTE_ESTILISTAS = ["#C87A8A", "#D4A24C", "#7D3C98", "#A05A6F", "#E0A4B0", "#8A4A56"];
 
-    let chartCanal = null, chartDiaTurno = null, chartEvolucion = null;
+    let chartCanal = null, chartEstilista = null, chartDiaSemana = null, chartEvolucion = null;
 
     function isoMinusDays(n) {
       const d = new Date();
@@ -887,8 +885,12 @@
 
     function renderStats(data) {
       // KPIs del rango
-      document.getElementById("statRangReservas").textContent = data.total_confirmadas_rango;
-      document.getElementById("statRangComensales").textContent = data.kpis.comensales_mes;
+      document.getElementById("statRangCitas").textContent = data.total_confirmadas_rango;
+      const ingresos = data.kpis.ingresos_estimados_rango_eur || 0;
+      document.getElementById("statRangIngresos").textContent = ingresos.toLocaleString("es-ES", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }) + " €";
       document.getElementById("statRangCancel").textContent = data.kpis.tasa_cancelacion_pct + "%";
 
       // Chart 1 — por canal (donut)
@@ -910,30 +912,49 @@
         },
       });
 
-      // Chart 2 — dia de la semana x turno (barras agrupadas)
-      const dias = data.por_dia_turno.map((x) => x.dia.charAt(0).toUpperCase() + x.dia.slice(1));
-      const comida = data.por_dia_turno.map((x) => x.comida);
-      const cena = data.por_dia_turno.map((x) => x.cena);
+      // Chart 2 — por estilista (donut)
+      const estilistas = (data.por_estilista || []).map((x) => x.nombre);
+      const totalesEst = (data.por_estilista || []).map((x) => x.total);
+      const coloresEst = estilistas.map((_, i) => PALETTE_ESTILISTAS[i % PALETTE_ESTILISTAS.length]);
 
-      if (chartDiaTurno) chartDiaTurno.destroy();
-      chartDiaTurno = new Chart(document.getElementById("chartDiaTurno"), {
-        type: "bar",
+      if (chartEstilista) chartEstilista.destroy();
+      chartEstilista = new Chart(document.getElementById("chartEstilista"), {
+        type: "doughnut",
         data: {
-          labels: dias,
-          datasets: [
-            { label: "Comida", data: comida, backgroundColor: PALETTE_DAY.comida },
-            { label: "Cena", data: cena, backgroundColor: PALETTE_DAY.cena },
-          ],
+          labels: estilistas,
+          datasets: [{ data: totalesEst, backgroundColor: coloresEst, borderWidth: 0 }],
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           plugins: { legend: { position: "bottom" } },
+        },
+      });
+
+      // Chart 3 — dia de la semana (barras)
+      const diasSem = (data.por_dia_semana || []).map((x) => x.dia.charAt(0).toUpperCase() + x.dia.slice(1));
+      const totalesDia = (data.por_dia_semana || []).map((x) => x.total);
+
+      if (chartDiaSemana) chartDiaSemana.destroy();
+      chartDiaSemana = new Chart(document.getElementById("chartDiaSemana"), {
+        type: "bar",
+        data: {
+          labels: diasSem,
+          datasets: [{
+            label: "Citas",
+            data: totalesDia,
+            backgroundColor: "#C87A8A",
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
           scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
         },
       });
 
-      // Chart 3 — evolucion diaria (linea)
+      // Chart 4 — evolucion diaria (linea)
       const fechas = data.por_dia.map((x) => x.fecha.slice(5));
       const totales = data.por_dia.map((x) => x.total);
 
@@ -943,10 +964,10 @@
         data: {
           labels: fechas,
           datasets: [{
-            label: "Reservas confirmadas",
+            label: "Citas confirmadas",
             data: totales,
-            borderColor: "#C0392B",
-            backgroundColor: "rgba(192, 57, 43, 0.1)",
+            borderColor: "#C87A8A",
+            backgroundColor: "rgba(200, 122, 138, 0.15)",
             tension: 0.3,
             fill: true,
             pointRadius: 3,

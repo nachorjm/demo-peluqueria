@@ -4,10 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!-- meta y title se rellenan dinamicamente al cargar (ver <script> al final):
-       el endpoint /api/restaurante devuelve los datos del cliente actual. Aqui
+       el endpoint /api/salon devuelve los datos del cliente actual. Aqui
        dejamos valores por defecto como fallback si el fetch falla. -->
-  <meta name="description" content="Reserva mesa y descubre nuestra cocina." />
-  <title>Restaurante — reservas</title>
+  <meta name="description" content="Pide cita en Salon Mara. Corte, color, peinados y barberia." />
+  <title>Salon Mara — peluqueria</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -15,22 +15,21 @@
 
   <style>
     :root {
-      --bg: #1A120B;
-      --bg-soft: #241A12;
-      --cream: #F7EEDF;
-      --cream-soft: #ECE1CF;
-      --accent: #C0392B;
-      --accent-soft: #E07A5F;
+      --bg: #1A1612;
+      --bg-soft: #2A2028;
+      --cream: #F9ECEC;
+      --cream-soft: #F3DEDE;
+      --accent: #C87A8A;
+      --accent-soft: #DEA3B0;
       --gold: #D4A24C;
-      --text: #2A2118;
-      --muted: #6B5E4A;
+      --text: #3A2630;
+      --muted: #8A6B73;
 
-      /* Widget chat (issue #55): colores propios para que el widget
-         pueda llevar paleta distinta de la landing si se embebe en
-         una web del cliente. Defaults heredan de la landing. */
+      /* Widget chat: colores propios para que el widget pueda llevar
+         paleta distinta de la landing si se embebe en la web del cliente. */
       --chat-bot-bg: #FFFFFF;
       --chat-user-bg: var(--accent);
-      --chat-user-text: var(--cream);
+      --chat-user-text: #FFFFFF;
       --chat-fondo: var(--cream);
     }
 
@@ -60,7 +59,7 @@
     .nav {
       position: sticky;
       top: 0;
-      background: rgba(247, 238, 223, 0.92);
+      background: rgba(249, 236, 236, 0.92);
       backdrop-filter: blur(8px);
       border-bottom: 1px solid rgba(0,0,0,0.06);
       z-index: 50;
@@ -98,10 +97,10 @@
     .hero {
       min-height: 82vh;
       background:
-        linear-gradient(135deg, rgba(26, 18, 11, 0.55), rgba(26, 18, 11, 0.75)),
-        radial-gradient(ellipse at top right, #8B4513 0%, transparent 50%),
-        radial-gradient(ellipse at bottom left, #C0392B 0%, transparent 50%),
-        #3B2817;
+        linear-gradient(135deg, rgba(58, 38, 48, 0.55), rgba(26, 22, 18, 0.75)),
+        radial-gradient(ellipse at top right, #C87A8A 0%, transparent 50%),
+        radial-gradient(ellipse at bottom left, #8A4A56 0%, transparent 55%),
+        #3A2630;
       color: var(--cream);
       display: flex;
       align-items: center;
@@ -126,7 +125,7 @@
       max-width: 560px;
       margin: 0 auto 40px;
       font-size: 16px;
-      color: rgba(247, 238, 223, 0.85);
+      color: rgba(249, 236, 236, 0.85);
     }
     .cta-row { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
     .btn {
@@ -143,12 +142,12 @@
       transition: all 0.25s ease;
       font-family: inherit;
     }
-    .btn-primary { background: var(--accent); color: var(--cream); }
-    .btn-primary:hover { background: #A62E22; transform: translateY(-1px); }
+    .btn-primary { background: var(--accent); color: #FFFFFF; }
+    .btn-primary:hover { background: #B05D6F; transform: translateY(-1px); }
     .btn-ghost {
       background: transparent;
       color: var(--cream);
-      border-color: rgba(247, 238, 223, 0.4);
+      border-color: rgba(249, 236, 236, 0.4);
     }
     .btn-ghost:hover { border-color: var(--gold); color: var(--gold); }
 
@@ -175,15 +174,15 @@
     .sobre-img {
       aspect-ratio: 4 / 5;
       background:
-        linear-gradient(180deg, transparent 40%, rgba(26,18,11,0.4)),
-        radial-gradient(circle at 30% 40%, #E07A5F 0%, transparent 50%),
-        #8B4513;
+        linear-gradient(180deg, transparent 40%, rgba(58,38,48,0.4)),
+        radial-gradient(circle at 30% 40%, #DEA3B0 0%, transparent 50%),
+        #8A4A56;
       border-radius: 4px;
       position: relative;
       overflow: hidden;
     }
     .sobre-img::after {
-      content: "una paella se come despacio";
+      content: "tu pelo, tu momento";
       position: absolute;
       bottom: 24px;
       left: 24px;
@@ -196,25 +195,66 @@
     .sobre p { color: var(--muted); font-size: 17px; margin-bottom: 20px; }
     .sobre p strong { color: var(--text); font-weight: 500; }
 
-    /* ESPECIALIDADES */
-    .especialidades { background: var(--bg-soft); color: var(--cream); }
-    .especialidades .section-title { color: var(--cream); }
-    .platos-grid {
+    /* SERVICIOS */
+    .servicios { background: var(--bg-soft); color: var(--cream); }
+    .servicios .section-title { color: var(--cream); }
+    .servicios .section-label { color: var(--gold); }
+    .servicios-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
       gap: 28px;
       margin-top: 48px;
     }
-    .plato { border-top: 1px solid rgba(247, 238, 223, 0.12); padding-top: 20px; }
-    .plato h3 { font-size: 24px; margin-bottom: 6px; color: var(--gold); }
-    .plato .precio {
+    .servicio { border-top: 1px solid rgba(249, 236, 236, 0.12); padding-top: 20px; }
+    .servicio h3 { font-size: 24px; margin-bottom: 6px; color: var(--gold); }
+    .servicio .precio {
       font-family: 'Inter', sans-serif;
       font-size: 14px;
       color: var(--cream-soft);
       margin-bottom: 8px;
       letter-spacing: 0.04em;
     }
-    .plato p { font-size: 14px; color: rgba(247, 238, 223, 0.75); }
+    .servicio p { font-size: 14px; color: rgba(249, 236, 236, 0.75); }
+
+    /* EQUIPO */
+    .equipo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 32px;
+      margin-top: 48px;
+    }
+    .estilista {
+      background: #FFFFFF;
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 6px;
+      padding: 24px;
+      text-align: center;
+    }
+    .estilista .avatar {
+      width: 84px;
+      height: 84px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent-soft), var(--accent));
+      color: #FFFFFF;
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+    }
+    .estilista h3 { font-size: 22px; margin-bottom: 4px; color: var(--text); }
+    .estilista .rol {
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+    .estilista .especialidades {
+      font-size: 13px;
+      color: var(--muted);
+    }
 
     /* INFO PRACTICA */
     .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 48px; margin-top: 40px; }
@@ -226,13 +266,13 @@
     /* FOOTER */
     footer {
       background: var(--bg);
-      color: rgba(247, 238, 223, 0.7);
+      color: rgba(249, 236, 236, 0.7);
       padding: 48px 0 32px;
       text-align: center;
       font-size: 13px;
     }
     footer .logo { color: var(--gold); margin-bottom: 8px; display: inline-block; }
-    footer a { color: rgba(247, 238, 223, 0.9); text-decoration: none; }
+    footer a { color: rgba(249, 236, 236, 0.9); text-decoration: none; }
     footer a:hover { color: var(--gold); }
     .tiny { opacity: 0.6; margin-top: 24px; font-size: 11px; }
 
@@ -245,10 +285,10 @@
       height: 64px;
       border-radius: 50%;
       background: var(--accent);
-      color: var(--cream);
+      color: #FFFFFF;
       border: none;
       cursor: pointer;
-      box-shadow: 0 8px 24px rgba(192, 57, 43, 0.4);
+      box-shadow: 0 8px 24px rgba(200, 122, 138, 0.45);
       z-index: 100;
       display: flex;
       align-items: center;
@@ -362,7 +402,7 @@
     .chat-foot textarea:focus { outline: none; border-color: var(--accent); }
     .chat-send {
       background: var(--accent);
-      color: var(--cream);
+      color: #FFFFFF;
       border: none;
       width: 40px;
       height: 40px;
@@ -372,7 +412,7 @@
       align-items: center;
       justify-content: center;
     }
-    .chat-send:hover { background: #A62E22; }
+    .chat-send:hover { background: #B05D6F; }
     .chat-send svg { width: 18px; height: 18px; }
   </style>
 </head>
@@ -381,29 +421,30 @@
   <nav class="nav">
     <div class="container nav-inner">
       <a href="#" class="logo">
-        <span data-r="nombre">Casa Lola</span>
-        <small><span data-r="tipo">Arroceria</span> · <span data-r="ciudad">Valencia</span></small>
+        <span data-r="nombre">Salon Mara</span>
+        <small><span data-r="tipo">Peluqueria unisex</span> · <span data-r="ciudad">Madrid</span></small>
       </a>
       <div class="nav-links">
-        <a href="#sobre">La casa</a>
-        <a href="#arroces">Arroces</a>
+        <a href="#sobre">El salon</a>
+        <a href="#servicios">Servicios</a>
+        <a href="#equipo">Equipo</a>
         <a href="#visita">Visitarnos</a>
-        <a href="#" onclick="abrirChat(); return false;" style="color: var(--accent); font-weight: 500;">Reservar</a>
+        <a href="#" onclick="abrirChat(); return false;" style="color: var(--accent); font-weight: 500;">Pedir cita</a>
       </div>
     </div>
   </nav>
 
   <header class="hero">
     <div class="hero-inner container">
-      <div class="tagline" data-r="tagline">Desde 1987, en el barrio de Russafa</div>
-      <h1>El arroz como <span class="accent">ritual</span></h1>
+      <div class="tagline" data-r="tagline">Peluqueria unisex en Malasana, Madrid</div>
+      <h1>Tu pelo, <span class="accent">tu momento</span></h1>
       <p class="sub">
-        Paellas al fuego, cocina mediterranea sin atajos y una mesa para
-        cada historia. En el corazon de Valencia.
+        Corte, color y peinados con el equipo que conoce tu cabello. En el
+        corazon de Malasana, sin prisas y sin esperas.
       </p>
       <div class="cta-row">
-        <button class="btn btn-primary" onclick="abrirChat()">Reservar mesa</button>
-        <a href="#arroces" class="btn btn-ghost">Ver nuestros arroces</a>
+        <button class="btn btn-primary" onclick="abrirChat()">Pedir cita</button>
+        <a href="#servicios" class="btn btn-ghost">Ver servicios</a>
       </div>
     </div>
   </header>
@@ -412,72 +453,101 @@
     <div class="container sobre">
       <div class="sobre-img"></div>
       <div>
-        <span class="section-label">La casa</span>
-        <h2 class="section-title">Una paella no se hace con prisa.</h2>
+        <span class="section-label">El salon</span>
+        <h2 class="section-title">Cada pelo es distinto. Y cada cita, tambien.</h2>
         <p>
-          En <span data-r="nombre">Casa Lola</span> cocinamos a la antigua. El arroz se hace al fuego,
-          paso a paso, y tarda lo que tiene que tardar: <strong>35 minutos</strong>.
-          Cuando reserves, avisanos si quieres arroz y lo tendremos a punto
-          al llegar.
+          En <span data-r="nombre">Salon Mara</span> trabajamos a fuego lento.
+          Sin prisas: <strong>te dedicamos el tiempo que tu pelo necesita</strong>,
+          ni mas ni menos. Mara, Lucia y Diego cuidan a las mismas clientas
+          desde hace anos.
         </p>
         <p>
-          Somos una arroceria de barrio: 14 mesas, cocina abierta y el mismo
-          equipo desde hace mas de tres decadas. Cocina mediterranea honesta,
-          producto del Mercado Central y vinos de la Comunidad Valenciana.
+          Color y mechas con producto profesional, cortes que van con tu cara,
+          peinados de evento y barberia clasica. Si tienes una alergia a algun
+          producto o piel sensible al amoniaco, dinoslo al pedir cita y lo
+          tenemos en cuenta.
         </p>
         <p>
-          Si tienes alergias o comes sin gluten, avisanos al reservar:
-          adaptamos la mayoria de platos sin drama.
+          Y si dudas si te queda mejor balayage o coloracion completa, te
+          asesoramos al llegar. Sin sorpresas en la cuenta.
         </p>
       </div>
     </div>
   </section>
 
-  <section class="block especialidades" id="arroces">
+  <section class="block servicios" id="servicios">
     <div class="container">
-      <span class="section-label" style="color: var(--gold);">Especialidades</span>
-      <h2 class="section-title">Nuestros arroces</h2>
-      <p style="color: rgba(247, 238, 223, 0.75); max-width: 620px;">
-        Todos se sirven a partir de 2 personas y requieren 35 minutos de
-        coccion. Conviene pedirlos al llegar, o avisar al reservar.
+      <span class="section-label">Servicios</span>
+      <h2 class="section-title">Que hacemos</h2>
+      <p style="color: rgba(249, 236, 236, 0.75); max-width: 620px;">
+        Precios orientativos. Si no estas segura de que servicio elegir, en
+        el chat te ayudamos a decidir antes de fijar la cita.
       </p>
 
-      <div class="platos-grid">
-        <div class="plato">
-          <h3>Paella valenciana</h3>
-          <div class="precio">18 € / persona</div>
-          <p>Pollo de corral, conejo, garrofo, ferradura, azafran. La autentica.</p>
+      <div class="servicios-grid">
+        <div class="servicio">
+          <h3>Corte mujer</h3>
+          <div class="precio">28 € · 45 min</div>
+          <p>Corte y acabado para cabello largo o medio.</p>
         </div>
-        <div class="plato">
-          <h3>Arroz del senyoret</h3>
-          <div class="precio">20 € / persona</div>
-          <p>Marisco pelado: gambas, calamar y mejillon. Para comer sin ensuciarse.</p>
+        <div class="servicio">
+          <h3>Corte hombre</h3>
+          <div class="precio">18 € · 30 min</div>
+          <p>Corte clasico o moderno con maquina y tijera.</p>
         </div>
-        <div class="plato">
-          <h3>Arroz negro</h3>
-          <div class="precio">19 € / persona</div>
-          <p>Tinta de calamar, sepia y all i oli casero.</p>
+        <div class="servicio">
+          <h3>Corte y barba</h3>
+          <div class="precio">26 € · 45 min</div>
+          <p>Corte de hombre mas perfilado de barba con navaja.</p>
         </div>
-        <div class="plato">
-          <h3>Arroz a banda</h3>
-          <div class="precio">19 € / persona</div>
-          <p>Fumet de pescado de roca, all i oli y punto de limon.</p>
+        <div class="servicio">
+          <h3>Coloracion completa</h3>
+          <div class="precio">65 € · 2 h</div>
+          <p>Tinte total con tratamiento de hidratacion incluido.</p>
         </div>
-        <div class="plato">
-          <h3>Arroz de verduras</h3>
-          <div class="precio">16 € / persona</div>
-          <p>Alcachofa, judia tierna, garrofo y pimiento. Vegetariano.</p>
+        <div class="servicio">
+          <h3>Mechas o balayage</h3>
+          <div class="precio">95 € · 2 h 30 min</div>
+          <p>Mechas tradicionales o balayage segun te quede mejor.</p>
         </div>
-        <div class="plato">
-          <h3>Y mas en la carta</h3>
-          <div class="precio">— pregunta al asistente</div>
-          <p>Esgarraet, croquetas, lubina a la sal, cordero al horno, postres caseros.</p>
+        <div class="servicio">
+          <h3>Peinado novia / evento</h3>
+          <div class="precio">desde 38 €</div>
+          <p>Peinado para boda, comunion o evento especial. Prueba previa para novias.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="block" id="visita">
+  <section class="block" id="equipo">
+    <div class="container">
+      <span class="section-label">El equipo</span>
+      <h2 class="section-title">Quienes te cuidamos</h2>
+      <div class="equipo-grid" id="equipoGrid">
+        <!-- relleno dinamico via /api/salon -->
+        <div class="estilista">
+          <div class="avatar">M</div>
+          <h3>Mara</h3>
+          <div class="rol">Duenna y colorista</div>
+          <div class="especialidades">Color, mechas, novias, corte mujer</div>
+        </div>
+        <div class="estilista">
+          <div class="avatar">L</div>
+          <h3>Lucia</h3>
+          <div class="rol">Estilista</div>
+          <div class="especialidades">Corte mujer y hombre, peinado, brushing</div>
+        </div>
+        <div class="estilista">
+          <div class="avatar">D</div>
+          <h3>Diego</h3>
+          <div class="rol">Barbero</div>
+          <div class="especialidades">Corte hombre, barba, corte nino</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block" id="visita" style="background: #FFFFFF;">
     <div class="container">
       <span class="section-label">Visitarnos</span>
       <h2 class="section-title">Donde y cuando</h2>
@@ -485,24 +555,24 @@
       <div class="info-grid">
         <div class="info-card">
           <h3>Direccion</h3>
-          <p data-r="direccion">C/ Conde Altea 12, 46005 Valencia</p>
+          <p data-r="direccion">C/ Espiritu Santo 34, 28004 Madrid</p>
           <p style="margin-top: 12px;">
-            <a data-r-href-maps="direccion" href="https://maps.google.com/?q=Conde+Altea+12+Valencia" target="_blank" rel="noopener">Abrir en Google Maps →</a>
+            <a data-r-href-maps="direccion" href="https://maps.google.com/?q=Espiritu+Santo+34+Madrid" target="_blank" rel="noopener">Abrir en Google Maps →</a>
           </p>
         </div>
         <div class="info-card">
           <h3>Horario</h3>
-          <p>Martes a sabado</p>
-          <p>13:30 – 16:00 / 20:30 – 23:30</p>
-          <p style="margin-top: 8px;">Domingo solo comida</p>
-          <p style="color: var(--muted);">Lunes cerrado</p>
+          <p>Martes a viernes</p>
+          <p>10:00 – 20:00</p>
+          <p style="margin-top: 8px;">Sabado 10:00 – 15:00</p>
+          <p style="color: var(--muted);">Lunes y domingo cerrado</p>
         </div>
         <div class="info-card">
-          <h3>Reservas</h3>
-          <p><a data-r-href-tel="telefono" href="tel:+34963123456" data-r="telefono">+34 963 12 34 56</a></p>
-          <p><a data-r-href-mail="email" href="mailto:reservas@casalola-valencia.es" data-r="email">reservas@casalola-valencia.es</a></p>
+          <h3>Citas</h3>
+          <p><a data-r-href-tel="telefono" href="tel:+34911223344" data-r="telefono">+34 911 22 33 44</a></p>
+          <p><a data-r-href-mail="email" href="mailto:hola@salonmara.es" data-r="email">hola@salonmara.es</a></p>
           <p style="margin-top: 12px;">
-            <button class="btn btn-primary" style="padding: 10px 18px; font-size: 12px;" onclick="abrirChat()">Reservar por chat</button>
+            <button class="btn btn-primary" style="padding: 10px 18px; font-size: 12px;" onclick="abrirChat()">Pedir cita por chat</button>
           </p>
         </div>
       </div>
@@ -511,13 +581,13 @@
 
   <footer>
     <div class="container">
-      <div class="logo" data-r="nombre">Casa Lola</div>
-      <p data-r-tpl="{direccion} · {telefono}">C/ Conde Altea 12, 46005 Valencia · +34 963 12 34 56</p>
-      <p class="tiny" data-r-tpl="© 2026 {nombre}. Demo del sistema multicanal de Alnora IA.">© 2026 Casa Lola. Demo del sistema multicanal de Alnora IA.</p>
+      <div class="logo" data-r="nombre">Salon Mara</div>
+      <p data-r-tpl="{direccion} · {telefono}">C/ Espiritu Santo 34, 28004 Madrid · +34 911 22 33 44</p>
+      <p class="tiny" data-r-tpl="© 2026 {nombre}. Demo del sistema multicanal de Alnora IA.">© 2026 Salon Mara. Demo del sistema multicanal de Alnora IA.</p>
     </div>
   </footer>
 
-  <button class="chat-toggle" id="chatToggle" aria-label="Abrir chat de reservas">
+  <button class="chat-toggle" id="chatToggle" aria-label="Abrir chat de citas">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
     </svg>
@@ -526,10 +596,10 @@
   <div class="chat-window" id="chatWindow">
     <div class="chat-head">
       <div style="display: flex; align-items: center; gap: 10px;">
-        <span data-r-bot-avatar style="font-size: 22px; line-height: 1;">💬</span>
+        <span data-r-bot-avatar style="font-size: 22px; line-height: 1;">💇</span>
         <div>
-          <strong data-r-bot-nombre data-r-fallback="nombre">Casa Lola</strong>
-          <small data-r-bot-descripcion>Reservas y carta</small>
+          <strong data-r-bot-nombre data-r-fallback="nombre">Mara</strong>
+          <small data-r-bot-descripcion>Citas y servicios</small>
         </div>
       </div>
       <button class="chat-close" id="chatClose" aria-label="Cerrar chat">×</button>
@@ -547,38 +617,27 @@
   </div>
 
   <script>
-    // Path relativo al origen actual. El HTML se sirve siempre desde el
-    // backend (GET /), asi que el fetch va al mismo host y no hay CORS.
+    // Path relativo al origen actual.
     const CHAT_API = "/web/chat";
+    const SESSION_KEY = "salonmara_session_id";
 
-    const SESSION_KEY = "restaurante_session_id";
-
-    // ───────── Config dinamica del restaurante (issue #11) ─────────
-    // Al cargar, fetchea /api/restaurante y aplica: nombre, contacto,
-    // branding (colores CSS), tagline, welcome del chat. Esto hace que
-    // clonar el repo a otro cliente solo requiera editar
-    // config/restaurante.yaml.
-    //
-    // Selectores soportados en el HTML:
-    //   data-r="nombre"              -> reemplaza textContent con RESTAURANTE.nombre
-    //   data-r-tpl="hola {nombre}"   -> reemplaza textContent con template
-    //   data-r-href-tel="telefono"   -> href = "tel:+34..."
-    //   data-r-href-mail="email"     -> href = "mailto:..."
-    //   data-r-href-maps="direccion" -> href = "https://maps.google.com/?q=..."
+    // ───────── Config dinamica del salon ─────────────────────────
+    // Al cargar, fetchea /api/salon y aplica: nombre, contacto, branding
+    // (colores CSS), tagline, equipo, welcome del chat. Asi clonar el
+    // repo a otro salon solo requiere editar config/peluqueria.yaml.
     let WELCOME = "Hola, soy el asistente. ¿En que te ayudo?";
     let FALLBACK_PHONE = "";
 
-    async function cargarConfigRestaurante() {
+    async function cargarConfigSalon() {
       try {
-        const res = await fetch("/api/restaurante");
+        const res = await fetch("/api/salon");
         if (!res.ok) return;
         const R = await res.json();
 
-        // Title y meta description
-        if (R.nombre) document.title = `${R.nombre} — ${R.tipo || "reservas"}`;
+        if (R.nombre) document.title = `${R.nombre} — ${R.tipo || "peluqueria"}`;
         const meta = document.querySelector('meta[name="description"]');
         if (meta && R.nombre) {
-          meta.setAttribute("content", `${R.nombre} — ${R.tipo || ""} en ${R.ciudad || ""}. Reserva mesa y descubre nuestra carta.`);
+          meta.setAttribute("content", `${R.nombre} — ${R.tipo || ""} en ${R.ciudad || ""}. Pide cita y descubre nuestros servicios.`);
         }
 
         // Campos simples via data-r
@@ -589,7 +648,7 @@
           }
         });
 
-        // Templates via data-r-tpl="texto {key} texto"
+        // Templates
         document.querySelectorAll("[data-r-tpl]").forEach(el => {
           const tpl = el.getAttribute("data-r-tpl");
           el.textContent = tpl.replace(/\{(\w+)\}/g, (_, k) => R[k] ?? "");
@@ -609,7 +668,7 @@
           if (R[key]) el.href = "https://maps.google.com/?q=" + encodeURIComponent(R[key]);
         });
 
-        // Landing: CSS custom properties (paleta principal)
+        // Landing: CSS custom properties
         const root = document.documentElement;
         const landingColores = (R.landing && R.landing.colores) || (R.branding && R.branding.colores) || {};
         if (landingColores.bg)     root.style.setProperty("--bg", landingColores.bg);
@@ -618,8 +677,7 @@
         if (landingColores.gold)   root.style.setProperty("--gold", landingColores.gold);
         if (landingColores.text)   root.style.setProperty("--text", landingColores.text);
 
-        // Landing: favicon, OG image, title (issue #55).
-        // Si las rutas son vacias, no inyectamos nada (no rompe).
+        // Landing: favicon, OG image
         const landing = R.landing || {};
         if (landing.favicon) {
           let fav = document.querySelector('link[rel="icon"]');
@@ -640,22 +698,19 @@
           og.setAttribute("content", landing.og_image);
         }
 
-        // Widget chat (issue #55): avatar, mensaje, colores propios.
-        // Si no esta el bloque widget_web, hereda del legacy branding.
+        // Widget chat
         const widget = R.widget_web || {};
         const wColores = widget.colores || {};
         if (wColores.burbuja_bot)     root.style.setProperty("--chat-bot-bg", wColores.burbuja_bot);
         if (wColores.burbuja_usuario) root.style.setProperty("--chat-user-bg", wColores.burbuja_usuario);
         if (wColores.fondo)           root.style.setProperty("--chat-fondo", wColores.fondo);
 
-        // Avatar emoji del bot en el header del chat
         if (widget.avatar_emoji) {
           document.querySelectorAll("[data-r-bot-avatar]").forEach(el => {
             el.textContent = widget.avatar_emoji;
           });
         }
 
-        // Identidad del bot: nombre + descripcion en el header
         const bot = R.bot || {};
         if (bot.nombre) {
           document.querySelectorAll("[data-r-bot-nombre]").forEach(el => {
@@ -668,7 +723,6 @@
           });
         }
 
-        // Mensaje de bienvenida: prioridad widget_web > branding legacy
         if (widget.mensaje_bienvenida) {
           WELCOME = widget.mensaje_bienvenida;
         } else if (R.branding && R.branding.welcome_chat) {
@@ -676,12 +730,33 @@
         }
 
         if (R.telefono) FALLBACK_PHONE = R.telefono;
+
+        // Equipo: regenerar la cuadricula con los estilistas reales
+        if (Array.isArray(R.equipo) && R.equipo.length > 0) {
+          const grid = document.getElementById("equipoGrid");
+          if (grid) {
+            grid.innerHTML = "";
+            R.equipo.forEach(e => {
+              const inicial = (e.nombre || "?").trim().charAt(0).toUpperCase();
+              const especialidades = (e.especialidades || []).join(", ").replace(/_/g, " ");
+              const card = document.createElement("div");
+              card.className = "estilista";
+              card.innerHTML = `
+                <div class="avatar">${inicial}</div>
+                <h3>${e.nombre || ""}</h3>
+                <div class="rol">${e.rol || ""}</div>
+                <div class="especialidades">${especialidades}</div>
+              `;
+              grid.appendChild(card);
+            });
+          }
+        }
       } catch (_e) {
         // Silencioso: si falla, quedan los valores HTML como fallback
       }
     }
 
-    cargarConfigRestaurante();
+    cargarConfigSalon();
 
     const toggle = document.getElementById("chatToggle");
     const windowEl = document.getElementById("chatWindow");
@@ -710,8 +785,6 @@
     }
 
     function renderMarkdownBasico(text) {
-      // Escapamos HTML primero (evita XSS) y luego aplicamos reemplazos
-      // simples: **negrita** -> <strong>, *cursiva* -> <em>, saltos -> <br>.
       let safe = escapeHtml(text);
       safe = safe.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
       safe = safe.replace(/(^|[\s\(])\*([^\*\n]+?)\*(?=[\s,.!?\)]|$)/g, "$1<em>$2</em>");
@@ -722,8 +795,6 @@
     function addMsg(role, text) {
       const div = document.createElement("div");
       div.className = "msg " + role;
-      // Para mensajes del bot (role=bot) renderizamos markdown basico;
-      // los del usuario (role=user) van como texto plano.
       if (role === "bot") {
         div.innerHTML = renderMarkdownBasico(text);
       } else {
