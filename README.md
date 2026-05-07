@@ -1,13 +1,13 @@
-# Casa Lola — Demo de gestión inteligente de reservas
+# Salon Mara — Demo de gestión inteligente de citas
 
-> **Casa Lola** es un restaurante ficticio (arrocería en Russafa, Valencia)
+> **Salon Mara** es una peluquería ficticia (unisex en Malasaña, Madrid)
 > que enseña en directo qué puede hacer un sistema multicanal de IA en
-> hostelería. Web, WhatsApp y teléfono unificados; panel del dueño con
-> calendario en vivo; recordatorios, lista de espera y encuestas
-> automáticas. El cliente reserva por donde quiera y al dueño le llega
-> todo a un solo sitio.
+> un salón. Web, WhatsApp y teléfono unificados; panel de la dueña con
+> calendario en vivo; asignación automática de estilista por
+> compatibilidad y disponibilidad. La clienta pide cita por donde quiera
+> y a la dueña le llega todo a un solo sitio.
 
-[![Tests](https://github.com/theGSM03/demo-restaurante/actions/workflows/tests.yml/badge.svg)](https://github.com/theGSM03/demo-restaurante/actions/workflows/tests.yml)
+[![Tests](https://github.com/nachorjm/demo-peluqueria/actions/workflows/tests.yml/badge.svg)](https://github.com/nachorjm/demo-peluqueria/actions/workflows/tests.yml)
 [![Python](https://img.shields.io/badge/Python-3.12-blue)](https://www.python.org/)
 [![Stack](https://img.shields.io/badge/Stack-Anthropic%20%C2%B7%20Supabase%20%C2%B7%20Vapi%20%C2%B7%20Twilio-7c3aed)](#stack)
 
@@ -17,96 +17,89 @@
 
 | Pieza | Enlace |
 |---|---|
-| **Landing + chatbot web** | https://demo-restaurante-production.up.railway.app |
-| **Panel del dueño** | https://demo-restaurante-production.up.railway.app/admin (pedir contraseña) |
-| **WhatsApp sandbox** | Manda `join famous-musical` al `+1 415 523 8886`, luego escribe lo que quieras |
-| **Llamada telefónica (Lola)** | En desarrollo — número definitivo al cerrar piloto |
+| **Landing + chatbot web** | _(pendiente de despliegue)_ |
+| **Panel de la dueña** | `/admin` (pedir contraseña) |
+| **WhatsApp sandbox** | _(pendiente de configurar Twilio nuevo)_ |
+| **Llamada telefónica (Mara)** | _(pendiente de configurar Vapi nuevo)_ |
 
 ---
 
 ## Qué problema resuelve
 
-Hostelería pequeña pierde reservas todos los días por:
+Una peluquería pequeña pierde citas todos los días por:
 
-- **El teléfono suena en plena cocina** y nadie lo coge → se pierde la reserva.
-- **La web no tiene chat**, el cliente tiene que llamar o ir a la competencia.
-- **WhatsApp se acumula sin atender**, mensajes a las 3 de la madrugada que nadie ve.
-- **No-shows del 15-20%** porque el cliente olvidó la mesa.
-- **Listas de espera manuales** que nadie gestiona.
-- **Pocas reseñas en Google** porque a la salida nadie las pide.
-- **El dueño no sabe** qué noches están vacías hasta que llegan.
+- **El teléfono suena mientras Mara está haciendo mechas** y nadie lo coge → la clienta se va a la competencia.
+- **La web no tiene chat**, la clienta tiene que llamar o cuadrar horarios por DM.
+- **WhatsApp se acumula sin atender**, mensajes a las 23h que nadie ve.
+- **Asignar estilista a mano** con una hoja en la recepción es un caos cuando 3 clientas piden corte+color a la vez.
+- **El equipo no sabe** qué huecos están vacíos esta semana hasta que llega el día.
 
-Esta demo cubre los siete frentes con un solo sistema.
+Esta demo cubre todos los frentes con un solo sistema.
 
 ---
 
 ## Qué incluye el producto
 
-### Atención al cliente
+### Atención a la clienta
 - ✅ **Chatbot web** embebible en cualquier landing.
 - ✅ **Chatbot WhatsApp** (Twilio sandbox + listo para Meta Cloud API).
-- ✅ **Agente telefónico de voz** "Lola" (Vapi + Claude Haiku).
+- ✅ **Agente telefónico de voz** "Mara" (Vapi + Claude Haiku).
 - ✅ **Multi-idioma** automático: ES / EN / FR / IT / DE / PT detectado por mensaje.
-- ✅ **Memoria entre canales**: el cliente que llamó por teléfono y luego escribe por WhatsApp es reconocido.
+- ✅ **Memoria entre canales**: la clienta que llamó por teléfono y luego escribe por WhatsApp es reconocida.
 
-### Gestión de reservas
-- ✅ **Modelo de mesas reales** con duración (1h45 comida, 2h cena, +30 min si arroz).
-- ✅ **Asignación inteligente**: agrupa mesas para grupos grandes, libera al cancelar.
-- ✅ **Cancelaciones seguras** con verificación de identidad (no se cancela una reserva ajena por saber el teléfono).
-- ✅ **Recordatorios** automáticos por WhatsApp el día anterior. Cliente confirma o anula respondiendo SÍ/NO.
-- ✅ **Lista de espera**: cuando una fecha está llena, el cliente se apunta y recibe oferta automática si alguien cancela.
-- ✅ **Detección de no-shows**: pasados 30 min sin llegar, mesa liberada y notificada al dueño.
+### Gestión de citas
+- ✅ **Catálogo de servicios** con precios y duraciones reales (corte mujer 45 min, color completo 2 h, mechas 2 h 30 min, etc.).
+- ✅ **Equipo con especialidades**: cada estilista declara qué hace (corte, color, barbería, peinado novia…). El bot asigna automáticamente quien sepa hacerlo y esté libre.
+- ✅ **Citas multi-servicio**: corte + color + tratamiento en la misma franja, con suma de duraciones y precio total.
+- ✅ **Cancelaciones seguras** con verificación de identidad (no se cancela una cita ajena por saber el teléfono).
+- ✅ **Modificar cita _in-place_**: cambiar fecha, hora, servicios o estilista sin crear duplicados.
+- ✅ **Handoff voz → WhatsApp**: si la clienta no recuerda el servicio exacto al llamar, Mara le envía un WhatsApp para acabar por texto.
 
-### Insight para el dueño
-- ✅ **Panel `/admin` con calendario** en vivo (FullCalendar, polling cada 15s).
-- ✅ **Estadísticas**: KPIs, reservas por canal, hora pico, evolución mensual.
-- ✅ **Email automático** al dueño en cada reserva nueva, escalación, queja o feedback negativo.
-
-### Captación de reseñas
-- ✅ **Encuesta post-visita** por WhatsApp el día siguiente. Nota ≥4 → enlace de Google Reviews. Nota ≤3 → comentario al dueño en privado (evita reseñas negativas públicas).
+### Insight para la dueña
+- ✅ **Panel `/admin` con calendario** en vivo (FullCalendar, polling cada 15 s) coloreado por canal.
+- ✅ **Estadísticas**: KPIs (citas hoy/semana/mes), citas por canal, **citas por estilista**, ingresos estimados, tasa de cancelación, evolución diaria.
+- ✅ **Email automático** a la dueña en cada cita nueva, modificación o cancelación (verde / naranja / rojo según el caso).
+- ✅ **Sincronización iCal** con su Google Calendar / iPhone (botón "Sincronizar al móvil").
 
 ### Calidad técnica
-- ✅ **70 smoke tests** automatizados, ejecutados en cada push (CI GitHub Actions).
-- ✅ **24 evals** del comportamiento del bot contra Claude real, para detectar regresiones al tocar prompts.
-- ✅ **Guardrails** server-side que detectan alucinaciones del modelo (afirmar "reserva confirmada" sin ejecutar la tool) y se corrigen automáticamente.
+- ✅ **~30 smoke tests** automatizados, ejecutados en cada push (CI GitHub Actions).
+- ✅ **Evals** del comportamiento del bot contra Claude real, para detectar regresiones al tocar prompts.
+- ✅ **Guardrails** server-side que detectan alucinaciones del modelo (afirmar "cita confirmada" sin ejecutar la tool) y se corrigen automáticamente.
 
 ---
 
 ## Casos de uso (cómo se siente la demo)
 
-### 1. Reserva por WhatsApp en 4 mensajes
-> Cliente: "Hola, quiero reservar mesa para 4 mañana a las 21:00"
-> Bot: "Perfecto. ¿A qué nombre y un teléfono de contacto?"
-> Cliente: "Marta Ruiz, 600111222"
-> Bot: "Te apunto: jueves 24 a las 21:00, 4 personas, Marta. ¿Confirmas?"
-> Cliente: "sí"
-> Bot: "✅ Reservada. Te esperamos mañana en Casa Lola."
+### 1. Cita por WhatsApp en pocos mensajes
+> Clienta: "Hola, quiero corte y color el viernes por la tarde"
+> Bot: "Perfecto. Tengo hueco con Mara el viernes 12 a las 17:00 (2 h 45 min, total 93 €). ¿A qué nombre lo apunto y un teléfono de contacto?"
+> Clienta: "Marta Ruiz, 600 11 12 22"
+> Bot: "Te apunto: viernes 12, 17:00 con Mara, corte mujer + coloración raíz, 93 €. ¿Confirmas?"
+> Clienta: "sí"
+> Bot: "✅ Cita confirmada. Te esperamos el viernes en Salón Mara."
 
-→ Reserva en BD + email al dueño + entrada en panel admin en <2 segundos.
+→ Cita en BD + email a la dueña + entrada en panel admin en <2 segundos.
 
-### 2. Cliente extranjero
-> Cliente: "Hi, do you have a table for 4 tomorrow night around 9?"
+### 2. Clienta extranjera
+> Clienta: "Hi, can I book a cut and blowdry for tomorrow afternoon?"
 > Bot: "Yes, we have availability. May I have your name and phone, please?"
 
 → Detecta inglés automáticamente, mantiene el idioma toda la conversación.
 
-### 3. Lista de espera
-> Cliente quiere reservar el sábado noche pero está lleno.
-> Bot: "Lo siento, ese turno no tiene plazas. Te apunto en lista de espera y te aviso si se libera mesa, ¿te apunto?"
+### 3. Asignación automática de estilista
+> Clienta: "Quiero arreglo de barba y corte de hombre el sábado"
+> Bot: "Para barba lo hace Diego. Tengo hueco el sábado a las 11:30 (50 min, 30 €). ¿Te va bien?"
 
-Más tarde, alguien cancela su reserva del sábado:
-> Cliente recibe WhatsApp automático: "Acaba de liberarse mesa para 4 el sábado a las 21:00, ¿la quieres? SÍ / NO"
-> Cliente: "SÍ"
-> Bot: "✅ Mesa apuntada. Te esperamos el sábado."
+→ El bot sabe que Diego es el barbero del equipo y asigna directamente sin preguntar al equipo.
 
-### 4. Encuesta post-visita
-Día siguiente a la reserva:
-> Bot: "Hola Marta, ¿qué tal anoche en Casa Lola? Puntúanos del 1 al 5."
-> Cliente: "5"
-> Bot: "¡Qué alegría! ¿Nos dejas una reseña en Google? https://g.page/CasaLola/review"
+### 4. Modificar cita sin duplicar
+> Clienta: "Tengo cita el viernes a las 17:00 pero me viene mejor el sábado a las 12:00"
+> Bot busca la cita por teléfono → confirma con la clienta → llama a `modificar_cita(id, fecha, hora_inicio)` → reasigna estilista si hace falta.
 
-### 5. Panel del dueño
-Calendario con reservas pintadas por canal (azul=web, verde=WhatsApp, violeta=voz). Click en cualquier reserva → modal con detalles + botón cancelar. Pestaña Estadísticas con donut de canales, hora pico y evolución.
+→ Misma fila en BD, mismo `id`. La dueña recibe email "Cita MODIFICADA" (naranja), no dos emails confusos.
+
+### 5. Panel de la dueña
+Calendario con citas pintadas por canal (azul=web, verde=WhatsApp, violeta=voz). Click en cualquier cita → modal con estilista + servicios + alergias + botón cancelar. Pestaña Estadísticas con donut de canales, donut por estilista, evolución diaria.
 
 ---
 
@@ -116,43 +109,43 @@ Calendario con reservas pintadas por canal (azul=web, verde=WhatsApp, violeta=vo
 - **Supabase** (Postgres + Auth + DB Webhooks) — datos y notificaciones reactivas.
 - **Vapi** — agente telefónico (voz Azure ES + Claude).
 - **Twilio** — WhatsApp (sandbox y Meta Cloud API listo).
-- **Resend** — emails al dueño.
+- **Resend** — emails a la dueña.
 - **FastAPI + uvicorn** — backend.
-- **Railway** — hosting + crons (recordatorios, no-show, encuestas).
+- **Railway** — hosting.
 - **FullCalendar + Chart.js** — panel admin.
 
 ---
 
-## Adaptación a otro restaurante
+## Adaptación a otra peluquería
 
 El repo está pensado como **plantilla**. Todo lo específico del cliente vive
-en **un solo fichero** (`config/restaurante.yaml`): nombre, carta, horarios,
-colores de marca, textos de la landing, dominios CORS y URL de Google Reviews.
-El resto del código (bot, endpoints, panel, tests) no se toca.
+en **un solo fichero** (`config/peluqueria.yaml`): nombre, equipo,
+servicios, precios, duraciones, horarios, colores de marca, textos de la
+landing, dominios CORS y URL de Google Reviews. El resto del código
+(bot, endpoints, panel, tests) no se toca.
 
 Onboarding de un cliente nuevo (objetivo: **<1 hora**):
 
 1. **Fork** del repo.
 2. Copiar la plantilla y rellenarla:
    ```bash
-   cp config/restaurante.example.yaml config/restaurante.yaml
-   # editar config/restaurante.yaml con los datos del cliente
+   cp config/peluqueria.example.yaml config/peluqueria.yaml
+   # editar config/peluqueria.yaml con los datos del cliente
    ```
-3. **Crear proyecto Supabase nuevo** y aplicar las migraciones de
-   `supabase/migrations/` en orden. Poblar la tabla `mesas` con las mesas
-   reales del restaurante.
+3. **Crear proyecto Supabase nuevo** y aplicar la migración de
+   `supabase/migrations/` (`0001_initial_schema.sql`).
 4. **Configurar `.env`** con credenciales del cliente (ver `.env.example`).
-   Datos del restaurante NO van aquí — van en el YAML.
+   Datos del salón NO van aquí — van en el YAML.
 5. **Desplegar en Railway** conectando el fork a la rama `main`.
    Railway detecta el push y redeploya automáticamente.
-6. (Opcional) Sustituir imágenes del landing en `index.html` si no valen
-   las actuales.
+6. (Opcional) Sustituir imágenes del landing en `static/branding/` si
+   no valen las actuales.
 
 Tras el paso 2, al arrancar el backend:
-- La landing y el panel admin leen `GET /api/restaurante` y se repintan
-  solos con el nombre, colores y textos del nuevo cliente.
-- Los prompts de los bots sustituyen `{RESTAURANTE['nombre']}` por el valor
-  del YAML automáticamente.
+- La landing y el panel admin leen `GET /api/salon` y se repintan
+  solos con el nombre, colores, equipo y textos del nuevo cliente.
+- Los prompts de los bots sustituyen `{SALON['nombre']}` y la lista de
+  servicios y estilistas por los valores del YAML automáticamente.
 
 Coste mensual estimado por cliente (uso medio): ~30-50 €/mes en infra
 (Railway + Supabase + Twilio + Resend) + variable en Vapi y Anthropic
