@@ -1,14 +1,16 @@
 """
-Router FastAPI del panel de administracion del restaurante.
+Router FastAPI del panel de administracion del salon.
 
 Endpoints:
-  - GET  /admin                              -> sirve el HTML del panel (dashboard).
-  - GET  /admin/api/reservas                 -> lista de reservas en un rango JSON.
-  - POST /admin/api/reservas/{id}/cancelar   -> cancela una reserva.
-  - GET  /admin/api/stats                    -> metricas agregadas para la pestania de estadisticas.
+  - GET  /admin                               -> sirve el HTML del panel.
+  - GET  /admin/api/citas                     -> lista de citas en un rango (FullCalendar).
+  - POST /admin/api/citas/{id}/cancelar       -> cancela una cita.
+  - GET  /admin/api/stats                     -> metricas agregadas.
+  - GET  /admin/ical/citas.ics                -> feed iCal (RFC 5545).
+  - GET  /admin/api/ical/info                 -> URL del feed iCal.
 
 Proteccion: password simple via header X-Admin-Password. Se valida contra
-la variable ADMIN_PASSWORD del .env. Es una demo, no sistema de auth real.
+la variable ADMIN_PASSWORD del .env.
 """
 import os
 from collections import defaultdict
@@ -20,26 +22,16 @@ from fastapi.responses import FileResponse, Response
 
 from core.config import supabase
 from core.logger import get_logger
+from core.peluqueria_data import estilista_por_id_yaml
 
 log = get_logger(__name__)
 
 router = APIRouter()
 
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "").strip()
-
-# Token para el feed iCal del dueno (issue #58). Se genera UNA vez al
-# onboarding y se guarda en Railway como env var. Si esta vacio, el
-# endpoint /admin/ical/reservas.ics devuelve 503.
 ICAL_FEED_TOKEN = os.environ.get("ICAL_FEED_TOKEN", "").strip()
 
-# Cuantos dias hacia atras incluir en el feed iCal. Permite al dueno
-# revisar al dia siguiente las reservas de ayer si las consulta por la
-# manana. 1 dia es suficiente para ese caso de uso.
 _ICAL_DIAS_PASADOS = 1
-
-# Cuantos dias hacia adelante incluir en el feed iCal. 90 dias = ~3
-# meses, suficiente para planificacion media. Limita el tamano del .ics
-# si el restaurante acumula muchisimas reservas.
 _ICAL_DIAS_FUTUROS = 90
 
 _DASHBOARD_HTML = os.path.join(os.path.dirname(__file__), "dashboard.html")
@@ -48,36 +40,46 @@ _DASHBOARD_HTML = os.path.join(os.path.dirname(__file__), "dashboard.html")
 def _check_password(header_value: Optional[str]) -> None:
     """Valida el password del header. 401 si no coincide."""
     if not ADMIN_PASSWORD:
-        # Fallback para desarrollo: si no hay password configurado,
-        # dejamos pasar todo. En produccion NO dejar asi.
         return
     if not header_value or header_value != ADMIN_PASSWORD:
         raise HTTPException(status_code=401, detail="Invalid admin password")
 
 
+def _cargar_servicios_de_cita(cita_id: str) -> list:
+    if not cita_id:
+        return []
+    try:
+        res = (
+            supabase.table("cita_servicios")
+            .select("*")
+            .eq("cita_id", cita_id)
+            .order("orden", desc=False)
+            .execute()
+        )
+        return res.data or []
+    except Exception:
+        return []
+
+
 @router.get("/admin")
 async def admin_dashboard():
-    """Sirve el HTML del panel. El HTML pide la password al cargar."""
+    """Sirve el HTML del panel."""
     return FileResponse(_DASHBOARD_HTML, media_type="text/html")
 
 
-@router.get("/admin/api/reservas")
-async def admin_listar_reservas(
+@router.get("/admin/api/citas")
+async def admin_listar_citas(
     desde: str = Query(..., description="Fecha inicio YYYY-MM-DD"),
     hasta: str = Query(..., description="Fecha fin YYYY-MM-DD"),
     incluir_canceladas: bool = Query(False, description="Si true, incluye canceladas en gris"),
     x_admin_password: Optional[str] = Header(default=None, alias="X-Admin-Password"),
 ):
-    """
-    Devuelve reservas en el rango [desde, hasta] en formato FullCalendar.
-    Por defecto excluye las canceladas (pasa `incluir_canceladas=true`
-    para obtenerlas tambien, en gris).
-    """
+    """Devuelve citas en el rango [desde, hasta] en formato FullCalendar."""
     _check_password(x_admin_password)
 
     try:
         q = (
-            supabase.table("reservas")
+            supabase.table("citas")
             .select("*")
             .gte("fecha", desde)
             .lte("fecha", hasta)
@@ -90,45 +92,47 @@ async def admin_listar_reservas(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"DB error: {e}")
 
-    # Resolver nombres de mesas en una sola query (en lugar de N).
-    todas_mesas_ids = set()
-    for r in filas:
-        for mid in (r.get("mesas_asignadas") or []):
-            todas_mesas_ids.add(mid)
-
-    nombre_por_mesa = {}
-    if todas_mesas_ids:
+    # Cargar todos los servicios de las citas en una sola query (en lugar de N).
+    cita_ids = [r["id"] for r in filas if r.get("id")]
+    servicios_por_cita: dict = {}
+    if cita_ids:
         try:
-            res_mesas = (
-                supabase.table("mesas")
-                .select("id, nombre")
-                .in_("id", list(todas_mesas_ids))
+            res_serv = (
+                supabase.table("cita_servicios")
+                .select("cita_id, servicio_nombre, orden")
+                .in_("cita_id", cita_ids)
+                .order("orden", desc=False)
                 .execute()
             )
-            nombre_por_mesa = {m["id"]: m["nombre"] for m in (res_mesas.data or [])}
+            for s in (res_serv.data or []):
+                servicios_por_cita.setdefault(s["cita_id"], []).append(
+                    s.get("servicio_nombre") or "?"
+                )
         except Exception as e:
-            log.warning("No se pudieron resolver nombres de mesas: %s", e)
+            log.warning("No se pudieron cargar cita_servicios: %s", e)
 
-    # Transformar a formato que FullCalendar entiende
     eventos = []
     for r in filas:
         fecha = r.get("fecha")
-        hora = (r.get("hora") or "21:00").split(".")[0]
-        if len(hora) == 5:
-            hora += ":00"
-        inicio_iso = f"{fecha}T{hora}"
+        hora_inicio = (r.get("hora_inicio") or "10:00").split(".")[0]
+        if len(hora_inicio) == 5:
+            hora_inicio += ":00"
+        inicio_iso = f"{fecha}T{hora_inicio}"
 
-        # Hora de fin: usar la real si esta guardada, sino estimar.
         hora_fin_real = (r.get("hora_fin") or "").split(".")[0]
         if hora_fin_real and len(hora_fin_real) >= 5:
             if len(hora_fin_real) == 5:
                 hora_fin_real += ":00"
             fin_iso = f"{fecha}T{hora_fin_real}"
         else:
-            turno = r.get("turno", "cena")
-            hora_h = int(hora[:2])
-            fin_h = min(hora_h + (3 if turno == "cena" else 2), 23)
-            fin_iso = f"{fecha}T{fin_h:02d}:{hora[3:5]}:00"
+            # Fallback: hora_inicio + 30 min si no hay hora_fin
+            try:
+                hh = int(hora_inicio[:2])
+                mm = int(hora_inicio[3:5])
+                base = datetime(2000, 1, 1, hh, mm) + timedelta(minutes=30)
+                fin_iso = f"{fecha}T{base.strftime('%H:%M:%S')}"
+            except Exception:
+                fin_iso = inicio_iso
 
         color_por_canal = {
             "web": "#2E86AB",
@@ -137,21 +141,18 @@ async def admin_listar_reservas(
             "escalacion": "#C0392B",
         }
         color = color_por_canal.get(r.get("canal_origen"), "#6B5E4A")
-
         if r.get("estado") == "cancelada":
             color = "#9E9E9E"
-        elif r.get("estado") == "no_show":
-            color = "#D4A24C"  # naranja/oro para llamar la atencion del duenno
 
-        # Resolver nombres de mesas asignadas
-        mesa_ids = r.get("mesas_asignadas") or []
-        nombres_mesas = sorted(filter(None, (nombre_por_mesa.get(mid) for mid in mesa_ids)))
-        mesa_str = "+".join(nombres_mesas) if nombres_mesas else None
+        # Resolver nombre publico del estilista
+        est = estilista_por_id_yaml(r.get("estilista_id_yaml") or "")
+        estilista_nombre = est["nombre"] if est else (r.get("estilista_id_yaml") or "?")
 
-        # Anadir mesa al titulo del evento si la hay
-        title = f"{r.get('nombre', '?')} ({r.get('num_personas', '?')}p)"
-        if mesa_str:
-            title += f" · {mesa_str}"
+        servicios_list = servicios_por_cita.get(r.get("id"), [])
+        servicios_str = ", ".join(servicios_list) if servicios_list else ""
+
+        title_extra = f" — {servicios_str}" if servicios_str else ""
+        title = f"{r.get('nombre', '?')} ({estilista_nombre}){title_extra}"
 
         eventos.append({
             "id": r.get("id"),
@@ -162,11 +163,10 @@ async def admin_listar_reservas(
             "borderColor": color,
             "extendedProps": {
                 "telefono": r.get("telefono"),
-                "num_personas": r.get("num_personas"),
-                "turno": r.get("turno"),
-                "mesa": mesa_str,
+                "estilista": estilista_nombre,
+                "estilista_id_yaml": r.get("estilista_id_yaml"),
+                "servicios": servicios_list,
                 "alergias": r.get("alergias"),
-                "ocasion_especial": r.get("ocasion_especial"),
                 "notas": r.get("notas"),
                 "canal_origen": r.get("canal_origen"),
                 "estado": r.get("estado"),
@@ -174,56 +174,42 @@ async def admin_listar_reservas(
             },
         })
 
-    return {"reservas": eventos, "total": len(eventos)}
+    return {"citas": eventos, "total": len(eventos)}
 
 
-@router.post("/admin/api/reservas/{reserva_id}/cancelar")
-async def admin_cancelar_reserva(
-    reserva_id: str,
+@router.post("/admin/api/citas/{cita_id}/cancelar")
+async def admin_cancelar_cita(
+    cita_id: str,
     x_admin_password: Optional[str] = Header(default=None, alias="X-Admin-Password"),
 ):
-    """Cancela una reserva desde el panel y dispara matching de lista de espera."""
+    """Cancela una cita desde el panel."""
     _check_password(x_admin_password)
 
     try:
-        # Leer la reserva ANTES de cancelarla, para tener fecha+turno+hora
-        # disponibles para el matching de lista de espera.
         prev = (
-            supabase.table("reservas")
-            .select("fecha, hora, turno")
-            .eq("id", reserva_id)
+            supabase.table("citas")
+            .select("fecha, hora_inicio")
+            .eq("id", cita_id)
             .limit(1)
             .execute()
         )
         if not prev.data:
-            raise HTTPException(status_code=404, detail="Reserva no encontrada")
-        reserva_prev = prev.data[0]
+            raise HTTPException(status_code=404, detail="Cita no encontrada")
 
         res = (
-            supabase.table("reservas")
+            supabase.table("citas")
             .update({
                 "estado": "cancelada",
                 "motivo_cancelacion": "cancelada_desde_panel",
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             })
-            .eq("id", reserva_id)
+            .eq("id", cita_id)
             .execute()
         )
         if not res.data:
-            raise HTTPException(status_code=404, detail="Reserva no encontrada")
+            raise HTTPException(status_code=404, detail="Cita no encontrada")
 
-        # Disparar matching de lista de espera (issue #6). Best-effort.
-        try:
-            from core.lista_espera import procesar_cancelacion
-            procesar_cancelacion(
-                fecha=reserva_prev.get("fecha"),
-                turno=reserva_prev.get("turno") or "cena",
-                hora_libre=(reserva_prev.get("hora") or "21:00")[:5],
-            )
-        except Exception as e:
-            log.warning("Lista espera matching fallo (admin): %s", e)
-
-        return {"status": "ok", "reserva_id": reserva_id}
+        return {"status": "ok", "cita_id": cita_id}
     except HTTPException:
         raise
     except Exception as e:
@@ -244,16 +230,7 @@ async def admin_stats(
     hasta: Optional[str] = Query(None, description="Fecha fin YYYY-MM-DD (default: hoy)"),
     x_admin_password: Optional[str] = Header(default=None, alias="X-Admin-Password"),
 ):
-    """
-    Devuelve metricas agregadas de reservas para el dashboard.
-
-    Incluye:
-      - KPIs: reservas hoy / esta semana / este mes / comensales mes.
-      - Distribucion por canal: web / whatsapp / voz / escalacion.
-      - Distribucion por turno y dia semana: matriz para detectar hora pico.
-      - Evolucion diaria en el rango: reservas por dia.
-      - Tasa de cancelacion.
-    """
+    """Devuelve metricas agregadas de citas para el dashboard."""
     _check_password(x_admin_password)
 
     hoy = date.today()
@@ -264,8 +241,9 @@ async def admin_stats(
 
     try:
         res = (
-            supabase.table("reservas")
-            .select("fecha, hora, turno, num_personas, canal_origen, estado, created_at")
+            supabase.table("citas")
+            .select("id, fecha, hora_inicio, estilista_id_yaml, "
+                    "canal_origen, estado, created_at")
             .gte("fecha", desde)
             .lte("fecha", hasta)
             .execute()
@@ -277,6 +255,25 @@ async def admin_stats(
     confirmadas = [r for r in filas if r.get("estado") != "cancelada"]
     canceladas = [r for r in filas if r.get("estado") == "cancelada"]
 
+    # ─── Cargar facturacion estimada (suma cita_servicios.precio_eur) ───
+    cita_ids_conf = [r["id"] for r in confirmadas if r.get("id")]
+    ingresos_estimados = 0.0
+    if cita_ids_conf:
+        try:
+            res_serv = (
+                supabase.table("cita_servicios")
+                .select("cita_id, precio_eur")
+                .in_("cita_id", cita_ids_conf)
+                .execute()
+            )
+            for s in (res_serv.data or []):
+                try:
+                    ingresos_estimados += float(s.get("precio_eur") or 0)
+                except (TypeError, ValueError):
+                    continue
+        except Exception as e:
+            log.warning("No se pudo calcular ingresos estimados: %s", e)
+
     # ─── KPIs ──────────────────────────────────────────────────────
     inicio_semana = hoy - timedelta(days=hoy.weekday())
     inicio_mes = hoy.replace(day=1)
@@ -285,16 +282,15 @@ async def admin_stats(
         f = r.get("fecha")
         return f and ini.isoformat() <= f <= fin.isoformat()
 
-    reservas_hoy = [r for r in confirmadas if r.get("fecha") == hoy.isoformat()]
-    reservas_semana = [r for r in confirmadas if _en_rango(r, inicio_semana, hoy + timedelta(days=6 - hoy.weekday()))]
-    reservas_mes = [r for r in confirmadas if _en_rango(r, inicio_mes, hoy)]
+    citas_hoy = [r for r in confirmadas if r.get("fecha") == hoy.isoformat()]
+    citas_semana = [r for r in confirmadas if _en_rango(r, inicio_semana, hoy + timedelta(days=6 - hoy.weekday()))]
+    citas_mes = [r for r in confirmadas if _en_rango(r, inicio_mes, hoy)]
 
     kpis = {
-        "reservas_hoy": len(reservas_hoy),
-        "comensales_hoy": sum(r.get("num_personas", 0) for r in reservas_hoy),
-        "reservas_semana": len(reservas_semana),
-        "reservas_mes": len(reservas_mes),
-        "comensales_mes": sum(r.get("num_personas", 0) for r in reservas_mes),
+        "citas_hoy": len(citas_hoy),
+        "citas_semana": len(citas_semana),
+        "citas_mes": len(citas_mes),
+        "ingresos_estimados_rango_eur": round(ingresos_estimados, 2),
         "tasa_cancelacion_pct": (
             round(100 * len(canceladas) / max(len(filas), 1), 1)
         ),
@@ -306,21 +302,29 @@ async def admin_stats(
         por_canal_counter[r.get("canal_origen") or "desconocido"] += 1
     por_canal = [{"canal": k, "total": v} for k, v in por_canal_counter.items()]
 
-    # ─── Por dia de la semana y turno ──────────────────────────────
-    por_dia_turno = {d: {"comida": 0, "cena": 0} for d in _DIAS_SEMANA_ES}
+    # ─── Por estilista ─────────────────────────────────────────────
+    por_estilista_counter = defaultdict(int)
+    for r in confirmadas:
+        id_yaml = r.get("estilista_id_yaml") or "desconocido"
+        por_estilista_counter[id_yaml] += 1
+    por_estilista = []
+    for id_yaml, total in por_estilista_counter.items():
+        e = estilista_por_id_yaml(id_yaml)
+        por_estilista.append({
+            "id_yaml": id_yaml,
+            "nombre": e["nombre"] if e else id_yaml,
+            "total": total,
+        })
+
+    # ─── Por dia de la semana ──────────────────────────────────────
+    por_dia_semana = {d: 0 for d in _DIAS_SEMANA_ES}
     for r in confirmadas:
         try:
             dt = datetime.strptime(r.get("fecha", ""), "%Y-%m-%d").date()
-            dia = _DIAS_SEMANA_ES[dt.weekday()]
-            turno = r.get("turno", "cena")
-            if turno in por_dia_turno[dia]:
-                por_dia_turno[dia][turno] += 1
+            por_dia_semana[_DIAS_SEMANA_ES[dt.weekday()]] += 1
         except (ValueError, TypeError):
             continue
-    por_dia_turno_list = [
-        {"dia": d, "comida": por_dia_turno[d]["comida"], "cena": por_dia_turno[d]["cena"]}
-        for d in _DIAS_SEMANA_ES
-    ]
+    por_dia_semana_list = [{"dia": d, "total": por_dia_semana[d]} for d in _DIAS_SEMANA_ES]
 
     # ─── Evolucion diaria en el rango ─────────────────────────────
     por_dia_counter = defaultdict(int)
@@ -344,49 +348,29 @@ async def admin_stats(
         "rango": {"desde": desde, "hasta": hasta},
         "kpis": kpis,
         "por_canal": por_canal,
-        "por_dia_turno": por_dia_turno_list,
+        "por_estilista": por_estilista,
+        "por_dia_semana": por_dia_semana_list,
         "por_dia": por_dia,
-        "total_reservas_rango": len(filas),
+        "total_citas_rango": len(filas),
         "total_confirmadas_rango": len(confirmadas),
     }
 
 
 # ════════════════════════════════════════════════════════════════════
-# Feed iCal para el calendario del duenno (issue #58)
+# Feed iCal para el calendario del duenno
 # ════════════════════════════════════════════════════════════════════
 
-@router.get("/admin/ical/reservas.ics")
+@router.get("/admin/ical/citas.ics")
 async def admin_ical_feed(
     token: str = Query(..., description="Token unico del feed (env ICAL_FEED_TOKEN)"),
 ):
-    """
-    Devuelve un feed iCal (RFC 5545) con las reservas del restaurante.
-
-    El duenno suscribe esta URL UNA vez en su Google Calendar / Apple
-    Calendar / Outlook como "calendario por suscripcion" y a partir de
-    ese momento ve sus reservas en el movil sin entrar al panel.
-
-    Refresh real:
-      - Apple Calendar: respeta REFRESH-INTERVAL (1h).
-      - Google Calendar: refresca cada ~4-12h, no se puede forzar.
-      - Outlook: ~3h.
-
-    Auth: token unico via query string. Razon: los clientes de
-    calendario no soportan headers custom al suscribirse, asi que el
-    standard de la industria es ?token=. El token debe ser largo y no
-    adivinable (>=32 chars). Se configura como env var ICAL_FEED_TOKEN.
-
-    Si el token es invalido devolvemos 404 en lugar de 401 para no
-    revelar que el endpoint existe (defensa en profundidad).
-    """
+    """Devuelve un feed iCal (RFC 5545) con las citas del salon."""
     if not ICAL_FEED_TOKEN:
         raise HTTPException(
             status_code=503,
             detail="Feed iCal no configurado. Define ICAL_FEED_TOKEN en el entorno.",
         )
     if token != ICAL_FEED_TOKEN:
-        # 404 deliberado: no revelar que el endpoint existe a quien
-        # mete tokens al azar.
         raise HTTPException(status_code=404, detail="Not found")
 
     hoy = date.today()
@@ -395,65 +379,74 @@ async def admin_ical_feed(
 
     try:
         res = (
-            supabase.table("reservas")
+            supabase.table("citas")
             .select(
-                "id, fecha, hora, hora_fin, nombre, num_personas, telefono, "
-                "turno, alergias, ocasion_especial, notas, canal_origen, "
-                "estado, mesas_asignadas, created_at, updated_at"
+                "id, fecha, hora_inicio, hora_fin, nombre, telefono, "
+                "estilista_id_yaml, alergias, notas, canal_origen, "
+                "estado, created_at, updated_at"
             )
             .gte("fecha", desde)
             .lte("fecha", hasta)
             .order("fecha", desc=False)
             .execute()
         )
-        reservas = res.data or []
+        citas = res.data or []
     except Exception as e:
-        log.error("[ical] Error leyendo reservas de Supabase: %s", e)
+        log.error("[ical] Error leyendo citas de Supabase: %s", e)
         raise HTTPException(status_code=500, detail=f"DB error: {e}")
 
-    # Import tardio para no acoplar admin/webhook.py a core/calendario
-    # ni a core/restaurante_data en el modulo. Permite que los tests
-    # que no usen ical no carguen el YAML.
-    from core.calendario import generar_ics_feed
-    from core.restaurante_data import RESTAURANTE
+    # Cargar servicios y enriquecer cada cita con `servicios_str`
+    cita_ids = [c["id"] for c in citas if c.get("id")]
+    servicios_por_cita: dict = {}
+    if cita_ids:
+        try:
+            res_s = (
+                supabase.table("cita_servicios")
+                .select("cita_id, servicio_nombre, orden")
+                .in_("cita_id", cita_ids)
+                .order("orden", desc=False)
+                .execute()
+            )
+            for s in (res_s.data or []):
+                servicios_por_cita.setdefault(s["cita_id"], []).append(
+                    s.get("servicio_nombre") or "?"
+                )
+        except Exception as e:
+            log.warning("[ical] No se pudieron cargar cita_servicios: %s", e)
+    for c in citas:
+        c["servicios_str"] = ", ".join(servicios_por_cita.get(c.get("id"), []))
 
-    nombre = RESTAURANTE.get("nombre", "Restaurante")
-    direccion = RESTAURANTE.get("direccion", "")
+    from core.calendario import generar_ics_feed
+    from core.peluqueria_data import SALON
+
+    nombre = SALON.get("nombre", "Peluqueria")
+    direccion = SALON.get("direccion", "")
 
     ics = generar_ics_feed(
-        reservas,
-        nombre_restaurante=nombre,
-        direccion_restaurante=direccion,
+        citas,
+        nombre_salon=nombre,
+        direccion_salon=direccion,
+        estilista_resolver=estilista_por_id_yaml,
     )
 
-    log.info("[ical] Feed servido: %d reservas (%s a %s)", len(reservas), desde, hasta)
+    log.info("[ical] Feed servido: %d citas (%s a %s)", len(citas), desde, hasta)
 
-    # text/calendar es el MIME oficial. charset=utf-8 explicito porque
-    # algunos clientes (Outlook clasico) interpretan latin-1 por defecto.
-    # Cache-Control corto para que clients que polean no peguen al DB
-    # de mas.
     return Response(
         content=ics,
         media_type="text/calendar; charset=utf-8",
         headers={
-            "Content-Disposition": 'inline; filename="reservas.ics"',
-            "Cache-Control": "private, max-age=600",  # 10 min
+            "Content-Disposition": 'inline; filename="citas.ics"',
+            "Cache-Control": "private, max-age=600",
         },
     )
 
 
 @router.get("/admin/api/ical/info")
 async def admin_ical_info(
-    request_url_base: Optional[str] = Query(None, description="Base URL para construir el link (ej. https://...)"),
+    request_url_base: Optional[str] = Query(None, description="Base URL para construir el link"),
     x_admin_password: Optional[str] = Header(default=None, alias="X-Admin-Password"),
 ):
-    """
-    Helper para el panel admin: devuelve el estado del feed iCal y la
-    URL completa para suscribirse (con token incluido). El front la
-    pinta tras pulsar 'Sincronizar al calendario'.
-
-    NO revela el token a quien no haya pasado el ADMIN_PASSWORD.
-    """
+    """Helper para el panel admin: estado del feed iCal y URL completa."""
     _check_password(x_admin_password)
 
     if not ICAL_FEED_TOKEN:
@@ -467,7 +460,7 @@ async def admin_ical_info(
         }
 
     base = (request_url_base or "").rstrip("/")
-    url_relativa = f"/admin/ical/reservas.ics?token={ICAL_FEED_TOKEN}"
+    url_relativa = f"/admin/ical/citas.ics?token={ICAL_FEED_TOKEN}"
     url_completa = f"{base}{url_relativa}" if base else url_relativa
 
     return {

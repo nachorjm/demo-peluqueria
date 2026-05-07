@@ -1,9 +1,10 @@
-"""Tools del agente telefonico (Vapi) de Casa Lola.
+"""Tools del agente telefonico (Vapi) de Salon Mara.
 
-El agente de voz se llama "Lola". Tiene 8 tools:
-  - reservar_mesa, consultar_disponibilidad, cancelar_reserva (logica en core/reservas.py)
-  - consultar_carta, consultar_horario (datos en core/restaurante_data.py)
-  - escalar_a_humano (core/escalacion_restaurante.py)
+El agente de voz se llama "Mara". Tiene 8 tools:
+  - agendar_cita, consultar_disponibilidad, cancelar_cita,
+    buscar_citas, modificar_cita (logica en core/citas.py)
+  - consultar_servicios, consultar_horario (datos en core/peluqueria_data.py)
+  - escalar_a_humano (core/escalacion.py)
   - consultar_historial (memoria persistente, reconocer cliente recurrente)
   - derivar_a_whatsapp (handoff voz->WhatsApp cuando no capturamos dato por voz)
 """
@@ -14,8 +15,14 @@ from core.config import supabase
 from core.logger import get_logger
 from core.memory import _normalizar_telefono, cargar_resumen_llamadas_previas
 from core.whatsapp_out import enviar_whatsapp
-from core.escalacion_restaurante import escalar_a_humano as _escalar_a_humano
-from core.restaurante_data import RESTAURANTE
+from core.escalacion import escalar_a_humano as _escalar_a_humano
+from core.peluqueria_data import SALON
+from core.citas import (
+    agendar_cita as _agendar_cita,
+    buscar_citas as _buscar_citas,
+    cancelar_cita as _cancelar_cita,
+    modificar_cita as _modificar_cita,
+)
 
 log = get_logger(__name__)
 
@@ -27,10 +34,10 @@ _MESES_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio",
 
 def _bloque_fecha_actual_voz() -> str:
     """
-    Bloque de fecha + calendario de 14 dias para Lola.
+    Bloque de fecha + calendario de 14 dias para Mara (voz).
 
     Lo inyectamos en la respuesta de `consultar_historial` porque el system
-    prompt de Vapi es estatico: al llamar esta tool (que Lola invoca al
+    prompt de Vapi es estatico: al llamar esta tool (que Mara invoca al
     inicio de cada llamada), Claude recibe la fecha actualizada.
     """
     hoy = date.today()
@@ -47,47 +54,39 @@ def _bloque_fecha_actual_voz() -> str:
         lineas.append(f"  {_DIAS_ES[d.weekday()]:10s} {d.isoformat()}{etiqueta}")
     return "\n".join(lineas)
 
-# Reutilizamos las implementaciones de las tools de reserva y consulta
-# del canal WhatsApp (mismas funciones para todos los canales).
+
+# Reusamos las implementaciones genericas del canal WhatsApp.
 from chatbot_whatsapp.tools import (
-    tool_reservar_mesa as _tool_reservar_mesa_wa,
     tool_consultar_disponibilidad,
-    tool_cancelar_reserva as _tool_cancelar_reserva_wa,
-    tool_consultar_carta,
+    tool_consultar_servicios,
     tool_consultar_horario,
 )
 
 
 # ════════════════════════════════════════════════════════════════════
-# Tool: reservar_mesa (canal voz)
+# Tool: agendar_cita (canal voz)
 # ════════════════════════════════════════════════════════════════════
-def tool_reservar_mesa(input_data: dict, telefono: str, canal_origen: str = "voz") -> dict:
-    return _tool_reservar_mesa_wa(input_data, telefono_canal=telefono, canal_origen=canal_origen)
+def tool_agendar_cita(input_data: dict, telefono: str, canal_origen: str = "voz") -> dict:
+    return _agendar_cita(input_data, telefono_canal=telefono, canal_origen=canal_origen)
 
 
-def tool_cancelar_reserva(input_data: dict, telefono: Optional[str]) -> dict:
-    from core.reservas import cancelar_reserva as _cancelar
-    return _cancelar(input_data, telefono_canal=telefono, canal_actual="voz")
+def tool_cancelar_cita(input_data: dict, telefono: Optional[str]) -> dict:
+    return _cancelar_cita(input_data, telefono_canal=telefono, canal_actual="voz")
 
 
-def tool_buscar_reservas(input_data: dict, telefono: Optional[str]) -> dict:
-    """
-    En voz el telefono del canal es la clave. Como en WA, si el cliente
-    no da telefono explicito usamos el del canal. Issue #33.
-    """
-    from core.reservas import buscar_reservas as _buscar
+def tool_buscar_citas(input_data: dict, telefono: Optional[str]) -> dict:
+    """En voz el telefono del canal es la clave."""
     tel = input_data.get("telefono") or telefono or ""
-    return _buscar(
+    return _buscar_citas(
         telefono=tel,
         nombre=input_data.get("nombre"),
         solo_futuras=True,
     )
 
 
-def tool_modificar_reserva(input_data: dict, telefono: Optional[str]) -> dict:
-    """Modifica una reserva existente in-place (UPDATE, no cancel+create)."""
-    from core.reservas import modificar_reserva as _modificar
-    return _modificar(input_data, telefono_canal=telefono, canal_origen="voz")
+def tool_modificar_cita(input_data: dict, telefono: Optional[str]) -> dict:
+    """Modifica una cita existente in-place (UPDATE, no cancel+create)."""
+    return _modificar_cita(input_data, telefono_canal=telefono, canal_origen="voz")
 
 
 # ════════════════════════════════════════════════════════════════════
@@ -147,18 +146,17 @@ def tool_consultar_historial(telefono: str) -> str:
 # ════════════════════════════════════════════════════════════════════
 # Tool: derivar_a_whatsapp (handoff voz -> WhatsApp)
 # ════════════════════════════════════════════════════════════════════
-# Lola la invoca cuando no ha podido capturar un dato por voz (tipico:
-# alergias largas, nombre con ortografia dificil, num_reserva para cancelar).
-# El backend:
-#   1. Registra un seguimiento pendiente en Supabase.
-#   2. Envia WhatsApp al cliente invitandole a responder por texto.
+# Mara la invoca cuando no ha podido capturar un dato por voz (tipico:
+# nombre con ortografia dificil, alergias a tintes, listado de servicios
+# con tecnicismos).
 
 PREGUNTAS_VALIDAS = {
-    "alergias",
+    "servicio",
     "fecha_y_hora",
-    "num_personas",
+    "estilista",
     "confirmacion",
     "nombre",
+    "alergias",
     "otro",
 }
 
@@ -168,9 +166,7 @@ def tool_derivar_a_whatsapp(
     telefono: str,
     vapi_call_id: Optional[str] = None,
 ) -> dict:
-    """
-    Crea seguimiento pendiente y envia WhatsApp al cliente.
-    """
+    """Crea seguimiento pendiente y envia WhatsApp al cliente."""
     pregunta = (input_data.get("pregunta_pendiente") or "otro").strip()
     if pregunta not in PREGUNTAS_VALIDAS:
         pregunta = "otro"
@@ -209,38 +205,43 @@ def tool_derivar_a_whatsapp(
             "mensaje": f"No pude registrar el seguimiento: {str(e)}",
         }
 
-    # Mensaje segun pregunta
-    nombre_resto = RESTAURANTE["nombre"]
-    if pregunta == "alergias":
+    nombre_salon = SALON["nombre"]
+    if pregunta == "servicio":
         mensaje_wa = (
-            f"¡Hola {nombre}! Soy el bot de {nombre_resto}. Hemos hablado hace "
-            f"un momento. Para cerrar la reserva con calma, ¿me escribes aqui "
-            f"las alergias o intolerancias del grupo? 🌿"
+            f"¡Hola {nombre}! Soy el bot de {nombre_salon}. Hemos hablado hace "
+            f"un momento. Para cerrar la cita con calma, ¿me escribes aqui que "
+            f"servicio o servicios quieres? 💇"
         )
     elif pregunta == "fecha_y_hora":
         mensaje_wa = (
-            f"¡Hola {nombre}! Soy el bot de {nombre_resto}. Para cerrar tu "
-            f"reserva, ¿me escribes aqui el dia y la hora que quieres? 📅"
+            f"¡Hola {nombre}! Soy el bot de {nombre_salon}. Para cerrar tu "
+            f"cita, ¿me escribes aqui el dia y la hora que quieres? 📅"
         )
-    elif pregunta == "num_personas":
+    elif pregunta == "estilista":
         mensaje_wa = (
-            f"¡Hola {nombre}! Soy el bot de {nombre_resto}. ¿Cuantos sereis "
-            f"al final? Escribelo aqui cuando lo sepas."
+            f"¡Hola {nombre}! Soy el bot de {nombre_salon}. ¿Tienes preferencia "
+            f"de estilista o te asigno yo el primero libre? Respondeme aqui."
+        )
+    elif pregunta == "alergias":
+        mensaje_wa = (
+            f"¡Hola {nombre}! Soy el bot de {nombre_salon}. Para que la "
+            f"colorista lo tenga en cuenta, ¿me escribes aqui si tienes alergia "
+            f"a algun producto o tinte? 🌿"
         )
     elif pregunta == "confirmacion":
         mensaje_wa = (
-            f"¡Hola {nombre}! Te he apuntado la reserva tras la llamada. "
+            f"¡Hola {nombre}! Te he apuntado la cita tras la llamada. "
             f"¿Todo correcto o cambiamos algo? Responde aqui si quieres modificar."
         )
     elif pregunta == "nombre":
         mensaje_wa = (
-            f"¡Hola! Soy el bot de {nombre_resto}. Para cerrar la reserva "
+            f"¡Hola! Soy el bot de {nombre_salon}. Para cerrar la cita "
             f"¿me escribes aqui tu nombre completo, tal y como quieres que "
-            f"figure en la mesa?"
+            f"figure?"
         )
     else:
         mensaje_wa = (
-            f"¡Hola {nombre}! Soy el bot de {nombre_resto}, hemos hablado "
+            f"¡Hola {nombre}! Soy el bot de {nombre_salon}, hemos hablado "
             f"por telefono. Escribeme aqui y terminamos el proceso tranquilo."
         )
 
@@ -272,8 +273,8 @@ def tool_derivar_a_whatsapp(
             "mensaje": (
                 "He intentado enviar el WhatsApp pero no he podido "
                 "(posiblemente el numero no esta en el sandbox). El "
-                "seguimiento queda registrado para que el restaurante "
-                "contacte al cliente."
+                "seguimiento queda registrado para que el salon contacte "
+                "al cliente."
             ),
             "error_envio": resultado_envio["error"],
         }

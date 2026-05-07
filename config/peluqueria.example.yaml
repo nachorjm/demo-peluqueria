@@ -1,0 +1,96 @@
+# ════════════════════════════════════════════════════════════════════
+# Plantilla de config para una peluqueria nueva
+# ════════════════════════════════════════════════════════════════════
+#
+# Copia este fichero a config/peluqueria.yaml y rellena con los
+# datos del cliente real. Ver config/peluqueria.yaml (Salon Mara)
+# como ejemplo realista.
+# ════════════════════════════════════════════════════════════════════
+
+salon:
+  nombre: "Nombre Peluqueria"
+  tipo: "Peluqueria unisex"          # o "Barberia", "Salon de belleza", etc.
+  ciudad: "Ciudad"
+  barrio: ""                          # opcional
+  anno_fundacion: 2020
+  direccion: "Calle Ejemplo 1, CP Ciudad"
+  telefono: "+34 9XX XX XX XX"
+  email: "hola@ejemplo.es"
+  web: "https://ejemplo.es"
+
+# Politica de antelacion para citas. 0 = sin limite.
+citas:
+  antelacion_minima_horas: 2          # ej. 2 = "no se reserva con menos de 2h"
+  antelacion_maxima_dias: 60          # ej. 60 = "no se reserva con mas de 60 dias"
+
+# Horarios. Lista vacia = cerrado ese dia.
+horarios:
+  lunes:     []
+  martes:    [["10:00", "20:00"]]
+  miercoles: [["10:00", "20:00"]]
+  jueves:    [["10:00", "20:00"]]
+  viernes:   [["10:00", "20:00"]]
+  sabado:    [["10:00", "15:00"]]
+  domingo:   []
+
+bot:
+  nombre: "Asistente"
+  descripcion: "asistente de la peluqueria"
+
+landing:
+  colores:
+    bg: "#1a1612"
+    cream: "#f5ede0"
+    accent: "#c84b31"
+    gold: "#d4a24c"
+    text: "#3a2e26"
+  slogan: "Slogan corto"
+  tagline: "Tagline mas largo"
+  favicon: "/static/branding/favicon.svg"
+  og_image: ""
+  logo: ""
+
+widget_web:
+  avatar_emoji: "💇"
+  mensaje_bienvenida: "Hola, soy el asistente. ¿En que te ayudo?"
+  colores:
+    burbuja_bot: "#FFF5E6"
+    burbuja_usuario: "#c84b31"
+    fondo: "#FFFFFF"
+
+emails:
+  from_address: ""
+  logo_url: ""
+
+google_review_url: ""
+
+cors_origins:
+  - "http://localhost:3000"
+  - "http://127.0.0.1:3000"
+
+# Estilistas / barberos del salon. Cada uno con id_yaml estable
+# (referencia interna), nombre publico y especialidades.
+#
+# Especialidades validas: corte_mujer, corte_hombre, corte_nino,
+# barba, color, mechas, peinado, brushing, novias, tratamiento.
+estilistas:
+  - id_yaml: "estilista1"
+    nombre: "Nombre"
+    rol: "Estilista"
+    especialidades: [corte_mujer, corte_hombre]
+    activa: true
+
+# Catalogo de servicios agrupado por categoria. Cada servicio:
+# - nombre: titulo publico
+# - precio: en euros
+# - duracion_min: minutos estimados
+# - descripcion: 1-2 frases para el cliente
+# - especialidad: debe coincidir con alguna especialidad de algun
+#   estilista (si no, ningun estilista podra hacer ese servicio).
+servicios:
+  corte:
+    - nombre: "Corte basico"
+      precio: 20.00
+      duracion_min: 30
+      descripcion: "Corte sencillo."
+      especialidad: corte_mujer

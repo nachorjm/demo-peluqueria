@@ -1,6 +1,6 @@
 """
-webhook.py — Router FastAPI del chatbot web de Casa Lola
---------------------------------------------------------
+webhook.py — Router FastAPI del chatbot web de Salon Mara
+---------------------------------------------------------
 Endpoint publico: POST /web/chat
   - Body JSON: { "session_id": "...", "message": "..." }
   - Response JSON: { "session_id": "...", "reply": "..." }
@@ -33,12 +33,11 @@ from chatbot_web.tools import TOOLS, ejecutar_tool
 # de estos strings en su campo 'status', la tool se considera ejecutada
 # correctamente y no dispara el guardrail.
 _ESTADOS_EXITO_POR_TOOL = {
-    "reservar_mesa": {"creada", "actualizada", "sin_cambios"},
-    "modificar_reserva": {"actualizada", "sin_cambios"},
-    "cancelar_reserva": {"cancelada", "ya_cancelada"},
+    "agendar_cita": {"creada", "actualizada", "sin_cambios", "duplicada"},
+    "modificar_cita": {"actualizada", "sin_cambios"},
+    "cancelar_cita": {"cancelada", "ya_cancelada"},
     "escalar_a_humano": {"ok"},
     "derivar_a_whatsapp": {"ok"},
-    "apuntar_lista_espera": {"ok", "ya_en_lista"},
 }
 
 

@@ -1,9 +1,9 @@
 """
-Deteccion de idioma del cliente para multi-idioma (issue #9).
+Deteccion de idioma del cliente para multi-idioma.
 
-Si el restaurante esta en zona turistica, detectar el idioma permite
-que los clientes extranjeros se sientan atendidos en su lengua,
-captando reservas que de otra forma se perderian.
+Si el salon esta en zona turistica, detectar el idioma permite que los
+clientes extranjeros se sientan atendidos en su lengua, captando citas
+que de otra forma se perderian.
 
 Estrategia (tras bug QA #A2: "me llamo Marta Ruiz" se detectaba como italiano):
   1. Saludos conocidos en otro idioma ("hello", "bonjour"...) -> ese idioma.
@@ -184,12 +184,12 @@ def bloque_idioma_para_prompt(idioma: str) -> str:
     """
     if idioma == "es" or idioma not in NOMBRE_IDIOMA:
         return ""
-    # Import local para evitar ciclo de imports (restaurante_data ->
+    # Import local para evitar ciclo de imports (peluqueria_data ->
     # prompts -> lang_detect). Igualmente es barato: dict ya cargado.
-    from core.restaurante_data import RESTAURANTE
+    from core.peluqueria_data import SALON
     nombre_es = NOMBRE_IDIOMA[idioma]
     nombre_nativo = NOMBRE_IDIOMA_NATIVO[idioma]
-    nombre_restaurante = RESTAURANTE.get("nombre", "")
+    nombre_salon = SALON.get("nombre", "")
     return (
         "\n\n═══════════════════════════════════════════════════════════\n"
         f"IDIOMA DEL CLIENTE: {nombre_es} ({idioma}).\n"
@@ -198,14 +198,13 @@ def bloque_idioma_para_prompt(idioma: str) -> str:
         f"'gracias', 'perfecto', 'vale': dilo en {nombre_nativo}.\n"
         "\n"
         "EXCEPCIONES (mantener en espanol):\n"
-        f"- Nombres propios del restaurante: '{nombre_restaurante}'.\n"
-        "- Nombres de platos tradicionales de la carta (ej. 'paella', \n"
-        "  'arroz negro', 'esgarraet'). La primera vez que aparezcan \n"
-        "  puedes dar una breve traduccion entre \n"
-        f"  parentesis en {nombre_nativo}.\n"
+        f"- Nombres propios del salon: '{nombre_salon}'.\n"
+        "- Nombres de servicios o tecnicas que no tengan traduccion natural \n"
+        "  (ej. 'balayage', 'brushing'). Pueden mantenerse y, la primera \n"
+        f"  vez que aparezcan, dar una breve nota entre parentesis en {nombre_nativo}.\n"
         "\n"
         "OTRAS REGLAS:\n"
-        "- Las tools (consultar_carta, consultar_horario...) devuelven \n"
+        "- Las tools (consultar_servicios, consultar_horario...) devuelven \n"
         "  contenido en espanol. Traducelo INTEGRAMENTE al responder.\n"
         f"- Botones de confirmacion / palabras de cortesia: en {nombre_nativo}.\n"
         "- Si en algun turno el cliente cambia al espanol, sigue al espanol.\n"

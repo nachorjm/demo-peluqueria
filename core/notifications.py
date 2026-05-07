@@ -1,31 +1,32 @@
 """
-Utilidades de notificacion por email via Resend para Casa Lola.
+Utilidades de notificacion por email via Resend para Salon Mara.
 
-Se usa para avisar al dueño/encargado cuando ocurren eventos
+Se usa para avisar al duenno/encargado cuando ocurren eventos
 importantes:
-  - Nueva reserva creada por cualquier canal (web, whatsapp, voz).
-  - Escalacion al humano (queja, grupo grande, evento privado, etc.).
+  - Nueva cita creada por cualquier canal (web, whatsapp, voz).
+  - Cita modificada o cancelada.
+  - Escalacion al humano (queja, servicio no disponible, etc.).
 
 Configuracion:
   - RESEND_API_KEY en .env (obtener en https://resend.com).
   - RESEND_FROM: email del remitente (por defecto el dominio de prueba
-    de Resend hasta que verifiquemos el del restaurante).
-  - NOTIFICATIONS_TO: email del dueño que recibe los avisos.
+    de Resend hasta que verifiquemos el del salon).
+  - NOTIFICATIONS_TO: email del duenno que recibe los avisos.
 """
 import os
 from typing import Optional
 
 import resend
 
-from core import restaurante_data as _rd
-from core.restaurante_data import (
-    RESTAURANTE,
+from core import peluqueria_data as _pd
+from core.peluqueria_data import (
+    SALON,
     email_from_address,
     email_logo_url,
+    estilista_por_id_yaml,
 )
 
 
-# Configuracion (se lee del entorno al importar)
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "").strip()
 NOTIFICATIONS_TO = os.environ.get("NOTIFICATIONS_TO", "").strip()
 
@@ -34,49 +35,42 @@ if RESEND_API_KEY:
 
 
 # ────────────────────────────────────────────────────────────────────
-# Helpers de branding email (issue #55)
+# Helpers de branding email
 # ────────────────────────────────────────────────────────────────────
-# Antes los emails tenian colores Casa Lola hardcoded. Ahora cogen
-# los del YAML (landing.colores) con fallback a una paleta neutra,
-# para que cada cliente reciba emails con SU marca.
 
 _DEFAULT_PALETA_EMAIL = {
-    "accent": "#7A1F1F",      # rojo cabecera
-    "accent_soft": "#FAF7F2", # fondo claro
-    "border": "#E7DFD2",      # bordes y separadores
-    "text": "#2A2118",        # texto principal
-    "muted": "#8A7B66",       # texto secundario
+    "accent": "#7A1F1F",
+    "accent_soft": "#FAF7F2",
+    "border": "#E7DFD2",
+    "text": "#2A2118",
+    "muted": "#8A7B66",
 }
 
 
 def _paleta_email() -> dict:
     """
     Devuelve la paleta a usar en los emails al duenno. Cada color cae a
-    su default neutro si el YAML no lo define.
-
-    Lee LANDING via _rd.LANDING (acceso por modulo) para que los tests
-    puedan monkeypatchear restaurante_data.LANDING y se respete.
+    su default neutro si el YAML no lo define. Lee LANDING via _pd.LANDING
+    para que monkeypatches en tests funcionen.
     """
-    colores = _rd.LANDING.get("colores", {}) or {}
+    colores = _pd.LANDING.get("colores", {}) or {}
     return {
         "accent": colores.get("accent") or _DEFAULT_PALETA_EMAIL["accent"],
         "accent_soft": colores.get("cream") or _DEFAULT_PALETA_EMAIL["accent_soft"],
-        "border": _DEFAULT_PALETA_EMAIL["border"],  # neutro siempre
+        "border": _DEFAULT_PALETA_EMAIL["border"],
         "text": colores.get("text") or _DEFAULT_PALETA_EMAIL["text"],
-        "muted": _DEFAULT_PALETA_EMAIL["muted"],   # neutro siempre
+        "muted": _DEFAULT_PALETA_EMAIL["muted"],
     }
 
 
 def _logo_html() -> str:
     """Devuelve el <img> del logo si esta configurado, o cadena vacia."""
-    # Igual que _paleta_email: leemos via modulo para que el monkeypatch
-    # de tests sobre restaurante_data.EMAILS_CFG funcione.
-    url = (_rd.EMAILS_CFG.get("logo_url") or "").strip()
+    url = (_pd.EMAILS_CFG.get("logo_url") or "").strip()
     if not url:
         return ""
     return (
         f'<div style="text-align:center;margin-bottom:24px;">'
-        f'<img src="{url}" alt="{RESTAURANTE.get("nombre", "")}" '
+        f'<img src="{url}" alt="{SALON.get("nombre", "")}" '
         f'style="max-height:48px;max-width:200px;" />'
         f'</div>'
     )
@@ -88,26 +82,13 @@ def send_email(
     to: Optional[str] = None,
     text: Optional[str] = None,
 ) -> dict:
-    """
-    Envia un email via Resend.
-
-    Returns:
-        dict con {"ok": bool, "id": str | None, "error": str | None}
-    """
+    """Envia un email via Resend."""
     if not RESEND_API_KEY:
-        return {
-            "ok": False,
-            "id": None,
-            "error": "RESEND_API_KEY no configurada en el .env.",
-        }
+        return {"ok": False, "id": None, "error": "RESEND_API_KEY no configurada en el .env."}
 
     destinatario = to or NOTIFICATIONS_TO
     if not destinatario:
-        return {
-            "ok": False,
-            "id": None,
-            "error": "No se ha indicado destinatario (NOTIFICATIONS_TO o argumento 'to').",
-        }
+        return {"ok": False, "id": None, "error": "No se ha indicado destinatario."}
 
     try:
         payload = {
@@ -118,40 +99,68 @@ def send_email(
         }
         if text:
             payload["text"] = text
-
         response = resend.Emails.send(payload)
         email_id = response.get("id") if isinstance(response, dict) else None
         return {"ok": True, "id": email_id, "error": None}
-
     except Exception as e:
         return {"ok": False, "id": None, "error": str(e)}
 
 
+# ────────────────────────────────────────────────────────────────────
+# Helpers especificos de citas
+# ────────────────────────────────────────────────────────────────────
+
+def _nombre_estilista_de_cita(cita: dict) -> str:
+    """Resuelve el nombre publico del estilista a partir del id_yaml."""
+    e = estilista_por_id_yaml(cita.get("estilista_id_yaml") or "")
+    if e:
+        return e.get("nombre") or cita.get("estilista_id_yaml") or "?"
+    return cita.get("estilista_id_yaml") or "?"
+
+
+def _servicios_legibles(servicios: list) -> str:
+    """Convierte filas de cita_servicios en texto plano: 'Corte mujer, Color raiz'."""
+    if not servicios:
+        return "(sin servicios)"
+    return ", ".join(s.get("servicio_nombre") or "?" for s in servicios)
+
+
+def _precio_total(servicios: list) -> str:
+    """Total en euros de la lista de servicios. Devuelve '38.00€'."""
+    total = sum(float(s.get("precio_eur") or 0) for s in servicios)
+    return f"{total:.2f}€"
+
+
 # ════════════════════════════════════════════════════════════════════
-# NOTIFICACION: nueva reserva confirmada
+# NOTIFICACION: nueva cita confirmada
 # ════════════════════════════════════════════════════════════════════
-def notificar_nueva_reserva(reserva: dict) -> dict:
+
+def notificar_nueva_cita(cita: dict, servicios: Optional[list] = None) -> dict:
     """
-    Envia un email al dueño cuando se crea una reserva nueva.
+    Envia un email al duenno cuando se crea una cita nueva.
 
     Args:
-        reserva: dict con campos de la tabla `reservas`:
-                 id, nombre, telefono, fecha, hora, num_personas,
-                 alergias, ocasion_especial, notas, canal_origen,
-                 created_at.
+        cita: dict con campos de la tabla `citas`.
+        servicios: lista de filas de `cita_servicios` (opcional, si se
+                   pasa se incluyen en el cuerpo).
     """
-    nombre = reserva.get("nombre") or "(sin nombre)"
-    telefono = reserva.get("telefono") or "(no indicado)"
-    fecha = reserva.get("fecha") or "?"
-    hora = reserva.get("hora") or "?"
-    num_personas = reserva.get("num_personas") or "?"
-    alergias = reserva.get("alergias") or "(ninguna indicada)"
-    ocasion = reserva.get("ocasion_especial") or "(no)"
-    notas = reserva.get("notas") or "(sin notas)"
-    canal = reserva.get("canal_origen") or "?"
-    created = reserva.get("created_at") or ""
+    nombre = cita.get("nombre") or "(sin nombre)"
+    telefono = cita.get("telefono") or "(no indicado)"
+    fecha = cita.get("fecha") or "?"
+    hora_inicio = (cita.get("hora_inicio") or "")[:5] or "?"
+    hora_fin = (cita.get("hora_fin") or "")[:5] or "?"
+    estilista = _nombre_estilista_de_cita(cita)
+    alergias = cita.get("alergias") or "(ninguna indicada)"
+    notas = cita.get("notas") or "(sin notas)"
+    canal = cita.get("canal_origen") or "?"
+    created = cita.get("created_at") or ""
 
-    subject = f"📅 Nueva reserva — {nombre} ({fecha} {hora}, {num_personas}p)"
+    servicios_txt = _servicios_legibles(servicios or [])
+    precio_txt = _precio_total(servicios or [])
+
+    subject = (
+        f"📅 Nueva cita — {nombre} ({fecha} {hora_inicio}, {estilista})"
+    )
 
     p = _paleta_email()
     logo = _logo_html()
@@ -163,31 +172,33 @@ def notificar_nueva_reserva(reserva: dict) -> dict:
   <div style="max-width:560px;margin:0 auto;background:#FFFFFF;border:1px solid {p['border']};border-radius:12px;padding:32px;">
     {logo}
     <h1 style="margin:0 0 8px 0;font-size:22px;color:{p['accent']};">
-      Nueva reserva en {RESTAURANTE['nombre']}
+      Nueva cita en {SALON['nombre']}
     </h1>
     <p style="margin:0 0 24px 0;color:{p['muted']};font-size:14px;">
-      Acaba de entrar una reserva por el canal <strong>{canal}</strong>.
+      Acaba de entrar una cita por el canal <strong>{canal}</strong>.
     </p>
 
     <table style="width:100%;border-collapse:collapse;font-size:15px;">
-      <tr><td style="padding:8px 0;color:{p['muted']};width:140px;">Nombre</td>
+      <tr><td style="padding:8px 0;color:{p['muted']};width:140px;">Cliente</td>
           <td style="padding:8px 0;color:{p['text']};"><strong>{nombre}</strong></td></tr>
       <tr><td style="padding:8px 0;color:{p['muted']};">Telefono</td>
           <td style="padding:8px 0;color:{p['text']};">{telefono}</td></tr>
       <tr><td style="padding:8px 0;color:{p['muted']};">Fecha</td>
-          <td style="padding:8px 0;color:{p['text']};"><strong>{fecha} a las {hora}</strong></td></tr>
-      <tr><td style="padding:8px 0;color:{p['muted']};">Comensales</td>
-          <td style="padding:8px 0;color:{p['text']};">{num_personas}</td></tr>
-      <tr><td style="padding:8px 0;color:{p['muted']};">Alergias</td>
+          <td style="padding:8px 0;color:{p['text']};"><strong>{fecha} de {hora_inicio} a {hora_fin}</strong></td></tr>
+      <tr><td style="padding:8px 0;color:{p['muted']};">Estilista</td>
+          <td style="padding:8px 0;color:{p['text']};">{estilista}</td></tr>
+      <tr><td style="padding:8px 0;color:{p['muted']};">Servicios</td>
+          <td style="padding:8px 0;color:{p['text']};">{servicios_txt}</td></tr>
+      <tr><td style="padding:8px 0;color:{p['muted']};">Total estimado</td>
+          <td style="padding:8px 0;color:{p['text']};">{precio_txt}</td></tr>
+      <tr><td style="padding:8px 0;color:{p['muted']};">Alergias / sensibilidades</td>
           <td style="padding:8px 0;color:{p['text']};">{alergias}</td></tr>
-      <tr><td style="padding:8px 0;color:{p['muted']};">Ocasion</td>
-          <td style="padding:8px 0;color:{p['text']};">{ocasion}</td></tr>
       <tr><td style="padding:8px 0;color:{p['muted']};vertical-align:top;">Notas</td>
           <td style="padding:8px 0;color:{p['text']};white-space:pre-wrap;">{notas}</td></tr>
     </table>
 
     <p style="margin:24px 0 0 0;color:{p['muted']};font-size:12px;border-top:1px solid {p['border']};padding-top:16px;">
-      Recibido {created} · {RESTAURANTE['nombre']}
+      Recibido {created} · {SALON['nombre']}
     </p>
   </div>
 </body>
@@ -195,15 +206,16 @@ def notificar_nueva_reserva(reserva: dict) -> dict:
 """.strip()
 
     text_plano = (
-        f"Nueva reserva en {RESTAURANTE['nombre']}\n"
+        f"Nueva cita en {SALON['nombre']}\n"
         f"---------------------------------------\n"
         f"Canal:     {canal}\n"
-        f"Nombre:    {nombre}\n"
+        f"Cliente:   {nombre}\n"
         f"Telefono:  {telefono}\n"
-        f"Fecha:     {fecha} a las {hora}\n"
-        f"Comensales:{num_personas}\n"
+        f"Fecha:     {fecha} de {hora_inicio} a {hora_fin}\n"
+        f"Estilista: {estilista}\n"
+        f"Servicios: {servicios_txt}\n"
+        f"Total:     {precio_txt}\n"
         f"Alergias:  {alergias}\n"
-        f"Ocasion:   {ocasion}\n"
         f"Notas:     {notas}\n"
         f"\nRecibido: {created}\n"
     )
@@ -212,27 +224,21 @@ def notificar_nueva_reserva(reserva: dict) -> dict:
 
 
 # ════════════════════════════════════════════════════════════════════
-# NOTIFICACION: caso escalado al dueño/encargado
+# NOTIFICACION: caso escalado al duenno
 # ════════════════════════════════════════════════════════════════════
+
 MOTIVO_LABELS = {
-    "cliente_lo_pide":      "El cliente ha pedido hablar con un humano",
-    "queja_o_enfado":       "Cliente molesto o queja",
-    "grupo_grande":         "Reserva de grupo grande (11+ personas)",
-    "evento_privado":       "Solicitud de evento privado",
-    "caso_complejo":        "Caso complejo fuera del ambito del bot",
-    "datos_no_capturados":  "No se pudieron capturar datos clave",
-    "otro":                 "Otro motivo",
+    "cliente_lo_pide":       "El cliente ha pedido hablar con un humano",
+    "queja_o_enfado":        "Cliente molesto o queja",
+    "servicio_no_disponible":"Pide un servicio que no esta en el catalogo",
+    "caso_complejo":         "Caso complejo fuera del ambito del bot",
+    "datos_no_capturados":   "No se pudieron capturar datos clave",
+    "otro":                  "Otro motivo",
 }
 
 
 def notificar_escalacion(escalacion: dict) -> dict:
-    """
-    Envia email al dueño cuando el bot escala un caso.
-
-    Args:
-        escalacion: dict con id, telefono, motivo, contexto, datos_cliente,
-                    vapi_call_id, created_at.
-    """
+    """Envia email al duenno cuando el bot escala un caso."""
     telefono = escalacion.get("telefono") or "(desconocido)"
     motivo = escalacion.get("motivo") or "otro"
     motivo_legible = MOTIVO_LABELS.get(motivo, motivo)
@@ -259,7 +265,7 @@ def notificar_escalacion(escalacion: dict) -> dict:
       ATENCION NECESARIA
     </div>
     <h1 style="margin:0 0 8px 0;font-size:22px;color:{p['accent']};">
-      Caso derivado por el bot de {RESTAURANTE['nombre']}
+      Caso derivado por el bot de {SALON['nombre']}
     </h1>
     <p style="margin:0 0 24px 0;color:{p['muted']};font-size:14px;">
       El asistente ha derivado este caso. Conviene contactar al cliente cuanto antes.
@@ -281,7 +287,7 @@ def notificar_escalacion(escalacion: dict) -> dict:
     </table>
 
     <p style="margin:24px 0 0 0;color:{p['muted']};font-size:12px;border-top:1px solid {p['border']};padding-top:16px;">
-      Recibido {fecha} · Bot de {RESTAURANTE['nombre']}
+      Recibido {fecha} · Bot de {SALON['nombre']}
     </p>
   </div>
 </body>
@@ -289,7 +295,7 @@ def notificar_escalacion(escalacion: dict) -> dict:
 """.strip()
 
     text_plano = (
-        f"Caso derivado por el bot de {RESTAURANTE['nombre']}\n"
+        f"Caso derivado por el bot de {SALON['nombre']}\n"
         f"--------------------------------------------\n"
         f"Motivo:    {motivo_legible}\n"
         f"Contexto:  {contexto}\n"
@@ -304,47 +310,38 @@ def notificar_escalacion(escalacion: dict) -> dict:
 
 
 # ════════════════════════════════════════════════════════════════════
-# NOTIFICACION: reserva modificada o cancelada (issue #31)
+# NOTIFICACION: cita modificada o cancelada
 # ════════════════════════════════════════════════════════════════════
 
-# Campos cuyos cambios SI disparan email. Los demas (updated_at,
-# recordatorio_enviado_at, mesas_asignadas, etc) se consideran internos
-# y no generan email.
 CAMPOS_RELEVANTES_CAMBIO = (
     "fecha",
-    "hora",
-    "num_personas",
+    "hora_inicio",
+    "hora_fin",
+    "estilista_id_yaml",
     "estado",
     "alergias",
-    "ocasion_especial",
     "notas",
 )
 
-# Etiquetas humanas por campo (para el email).
 _ETIQUETAS_CAMPO = {
     "fecha": "Fecha",
-    "hora": "Hora",
-    "num_personas": "Comensales",
+    "hora_inicio": "Hora inicio",
+    "hora_fin": "Hora fin",
+    "estilista_id_yaml": "Estilista",
     "estado": "Estado",
     "alergias": "Alergias",
-    "ocasion_especial": "Ocasion",
     "notas": "Notas",
 }
 
 
-def _diff_reserva(old: dict, new: dict) -> list:
-    """
-    Calcula cambios entre old y new sobre los campos relevantes.
-    Devuelve lista de tuplas (campo, old_val, new_val). Vacia si no
-    hay cambios significativos.
-    """
+def _diff_cita(old: dict, new: dict) -> list:
+    """Cambios entre old y new sobre campos relevantes de citas."""
     if not old or not new:
         return []
     diff = []
     for campo in CAMPOS_RELEVANTES_CAMBIO:
         ov = old.get(campo)
         nv = new.get(campo)
-        # Normalizar None vs "" para no marcar diff espurio
         ov_norm = "" if ov is None else ov
         nv_norm = "" if nv is None else nv
         if ov_norm != nv_norm:
@@ -359,73 +356,63 @@ def _es_cancelacion(old: dict, new: dict) -> bool:
     return old_estado != "cancelada" and new_estado == "cancelada"
 
 
-def notificar_cambio_reserva(old: dict, new: dict) -> dict:
-    """
-    Envia un email al dueño cuando una reserva CAMBIA (UPDATE) o se
-    CANCELA desde cualquier canal. Distingue visual y textualmente entre
-    cancelacion y modificacion para que el dueño no confunda un cambio
-    con una reserva nueva (issue #31).
+def _resolver_estilista_label(id_yaml: Optional[str]) -> str:
+    """Convierte un id_yaml en el nombre publico para mostrar."""
+    if not id_yaml:
+        return "(ninguno)"
+    e = estilista_por_id_yaml(id_yaml)
+    return e.get("nombre") if e else id_yaml
 
-    Reglas:
-        - Si solo hay cambios en campos internos (updated_at,
-          recordatorio_enviado_at, mesas_asignadas), devuelve
-          {"ok": True, "id": None, "error": None, "skipped": True}
-          sin enviar email.
-        - Si hay cancelacion (estado: confirmada -> cancelada), subject
-          "Reserva CANCELADA" con cuerpo en rojo.
-        - Si hay otro cambio relevante, subject "Reserva MODIFICADA"
-          con cuerpo en naranja.
 
-    Args:
-        old: estado previo de la fila (viene del webhook Supabase
-             como `old_record`).
-        new: estado nuevo (viene como `record`).
+def notificar_cambio_cita(old: dict, new: dict) -> dict:
     """
-    diff = _diff_reserva(old, new)
+    Envia email al duenno cuando una cita cambia (UPDATE) o se cancela.
+    Distingue visualmente entre cancelacion (rojo) y modificacion
+    (naranja) para no confundir al duenno con una cita nueva.
+    """
+    diff = _diff_cita(old, new)
     if not diff:
         return {"ok": True, "id": None, "error": None, "skipped": True}
 
     nombre = new.get("nombre") or old.get("nombre") or "(sin nombre)"
     fecha_new = new.get("fecha") or "?"
-    hora_new = (new.get("hora") or "")[:5] or "?"
-    num_new = new.get("num_personas") or "?"
+    hora_new = (new.get("hora_inicio") or "")[:5] or "?"
     canal = new.get("canal_origen") or old.get("canal_origen") or "?"
-    reserva_id = new.get("id") or old.get("id") or "?"
+    cita_id = new.get("id") or old.get("id") or "?"
 
     cancelacion = _es_cancelacion(old, new)
     if cancelacion:
-        tono_color = "#991B1B"  # rojo
+        tono_color = "#991B1B"
         tono_fondo = "#FEF2F2"
-        titulo = f"Reserva CANCELADA — {nombre}"
-        subject = (
-            f"❌ Reserva CANCELADA — {nombre} ({fecha_new} {hora_new}, {num_new}p)"
-        )
+        titulo = f"Cita CANCELADA — {nombre}"
+        subject = f"❌ Cita CANCELADA — {nombre} ({fecha_new} {hora_new})"
         intro = (
-            f"La reserva de <strong>{nombre}</strong> ha sido "
+            f"La cita de <strong>{nombre}</strong> ha sido "
             f"<strong style='color:{tono_color};'>cancelada</strong> "
             f"por el canal <strong>{canal}</strong>."
         )
-        intro_txt = f"La reserva de {nombre} ha sido CANCELADA (canal: {canal})."
+        intro_txt = f"La cita de {nombre} ha sido CANCELADA (canal: {canal})."
     else:
-        tono_color = "#B45309"  # naranja
+        tono_color = "#B45309"
         tono_fondo = "#FFFBEB"
-        titulo = f"Reserva MODIFICADA — {nombre}"
-        subject = (
-            f"✏️ Reserva MODIFICADA — {nombre} ({fecha_new} {hora_new}, {num_new}p)"
-        )
+        titulo = f"Cita MODIFICADA — {nombre}"
+        subject = f"✏️ Cita MODIFICADA — {nombre} ({fecha_new} {hora_new})"
         intro = (
-            f"La reserva de <strong>{nombre}</strong> ha sido "
+            f"La cita de <strong>{nombre}</strong> ha sido "
             f"<strong style='color:{tono_color};'>modificada</strong> "
             f"por el canal <strong>{canal}</strong>."
         )
-        intro_txt = f"La reserva de {nombre} ha sido MODIFICADA (canal: {canal})."
+        intro_txt = f"La cita de {nombre} ha sido MODIFICADA (canal: {canal})."
 
-    # Tabla de cambios
     filas_html = []
     for campo, ov, nv in diff:
         etiqueta = _ETIQUETAS_CAMPO.get(campo, campo)
-        ov_str = "(vacio)" if ov in (None, "") else str(ov)
-        nv_str = "(vacio)" if nv in (None, "") else str(nv)
+        if campo == "estilista_id_yaml":
+            ov_str = _resolver_estilista_label(ov)
+            nv_str = _resolver_estilista_label(nv)
+        else:
+            ov_str = "(vacio)" if ov in (None, "") else str(ov)
+            nv_str = "(vacio)" if nv in (None, "") else str(nv)
         filas_html.append(
             f"<tr>"
             f"<td style='padding:8px 0;color:#8A7B66;width:140px;'>{etiqueta}</td>"
@@ -453,7 +440,7 @@ def notificar_cambio_reserva(old: dict, new: dict) -> dict:
     </table>
 
     <p style="margin:24px 0 0 0;color:{p['muted']};font-size:12px;border-top:1px solid {p['border']};padding-top:16px;">
-      Reserva ID: {reserva_id} · {RESTAURANTE['nombre']}
+      Cita ID: {cita_id} · {SALON['nombre']}
     </p>
   </div>
 </body>
@@ -463,14 +450,18 @@ def notificar_cambio_reserva(old: dict, new: dict) -> dict:
     lineas_texto = []
     for campo, ov, nv in diff:
         etiqueta = _ETIQUETAS_CAMPO.get(campo, campo)
-        ov_str = "(vacio)" if ov in (None, "") else str(ov)
-        nv_str = "(vacio)" if nv in (None, "") else str(nv)
+        if campo == "estilista_id_yaml":
+            ov_str = _resolver_estilista_label(ov)
+            nv_str = _resolver_estilista_label(nv)
+        else:
+            ov_str = "(vacio)" if ov in (None, "") else str(ov)
+            nv_str = "(vacio)" if nv in (None, "") else str(nv)
         lineas_texto.append(f"  {etiqueta}: {ov_str} -> {nv_str}")
     text_plano = (
         f"{intro_txt}\n"
         f"---------------------------------------\n"
         f"Cambios:\n" + "\n".join(lineas_texto) + "\n"
-        f"\nReserva ID: {reserva_id}\n"
+        f"\nCita ID: {cita_id}\n"
     )
 
     return send_email(subject=subject, html=html, text=text_plano)

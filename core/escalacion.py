@@ -1,5 +1,5 @@
 """
-Logica de escalacion al dueño/encargado del restaurante.
+Logica de escalacion al duenno/encargado del salon.
 
 Compartida por los 3 canales (web, wa, voz). Crea registro en
 `escalaciones` y envia email al equipo via Resend.
@@ -18,8 +18,7 @@ log = get_logger(__name__)
 MOTIVOS_VALIDOS = {
     "cliente_lo_pide",
     "queja_o_enfado",
-    "grupo_grande",
-    "evento_privado",
+    "servicio_no_disponible",
     "caso_complejo",
     "datos_no_capturados",
     "otro",
@@ -33,7 +32,7 @@ def escalar_a_humano(
     vapi_call_id: Optional[str] = None,
 ) -> dict:
     """
-    Crea un registro en `escalaciones` y notifica al dueño por email.
+    Crea un registro en `escalaciones` y notifica al duenno por email.
 
     Args (en input_data):
         motivo: enum de MOTIVOS_VALIDOS.
@@ -54,7 +53,6 @@ def escalar_a_humano(
             ),
         }
 
-    # Telefono: prioriza el del payload, si no el del canal
     tel_payload = (input_data.get("telefono") or "").strip()
     tel_limpio = _normalizar_telefono(tel_payload or telefono or "")
     if not tel_limpio:
@@ -62,12 +60,8 @@ def escalar_a_humano(
 
     nombre_cliente = (input_data.get("nombre") or "").strip()
 
-    # Validacion de datos minimos (QA round 2: email duplicado).
-    # Escalar sin nombre ni telefono produce avisos al dueño sin datos
-    # para poder contactar al cliente. Forzamos al bot a pedirlos antes.
-    # - En web: el canal NO aporta telefono, asi que exigimos ambos.
-    # - En whatsapp/voz: el telefono del canal cuenta. Exigimos solo el
-    #   nombre si no se ha proporcionado.
+    # Validacion de datos minimos: nombre + telefono. Escalar sin ellos
+    # produce avisos sin forma de contactar al cliente.
     tiene_telefono_util = tel_limpio != "(desconocido)"
     faltantes = []
     if not nombre_cliente:
@@ -82,7 +76,7 @@ def escalar_a_humano(
                 f"Faltan datos para escalar: {', '.join(faltantes)}. "
                 "Pide al cliente esos datos explicitamente ANTES de "
                 "volver a ejecutar esta tool. NO escales de forma "
-                "parcial: confirmas al cliente que le llamaran solo "
+                "parcial: confirma al cliente que le llamaran solo "
                 "despues de tener el registro completo."
             ),
         }
@@ -106,7 +100,6 @@ def escalar_a_humano(
         escalacion_id = res.data[0]["id"] if res.data else None
         created_at = res.data[0].get("created_at") if res.data else None
 
-        # Mirror al CRM (clientes) si tenemos telefono real
         if tel_limpio != "(desconocido)":
             try:
                 upsert_cliente(
@@ -119,7 +112,6 @@ def escalar_a_humano(
             except Exception as e:
                 log.warning("upsert_cliente (escalacion) fallo: %s", e)
 
-        # Email al equipo (best-effort)
         email_status = "pendiente"
         email_id = None
         email_error = None
@@ -160,7 +152,7 @@ def escalar_a_humano(
             "status": "ok",
             "escalacion_id": escalacion_id,
             "mensaje": (
-                f"Escalacion registrada (ID {escalacion_id}). El dueño recibe "
+                f"Escalacion registrada (ID {escalacion_id}). El duenno recibe "
                 f"ahora un aviso por email y contactara al cliente cuanto antes. "
                 f"Confirma al cliente que su caso sera atendido personalmente."
             ),
