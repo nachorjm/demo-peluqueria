@@ -1,11 +1,11 @@
 """
-Generador de feed iCal (RFC 5545) para que el dueno del restaurante
-suscriba sus reservas al calendario de su movil (issue #58).
+Generador de feed iCal (RFC 5545) para que el duenno del salon
+suscriba sus citas al calendario de su movil.
 
-El feed se sirve dinamicamente en /admin/ical/reservas.ics y el dueno
+El feed se sirve dinamicamente en /admin/ical/citas.ics y el duenno
 lo anade UNA VEZ a Google Calendar / Apple Calendar / Outlook como
 "calendario por suscripcion". A partir de ahi:
-- Las reservas nuevas aparecen como eventos automaticamente.
+- Las citas nuevas aparecen como eventos automaticamente.
 - Las modificaciones se reflejan (mismo UID).
 - Las cancelaciones se marcan con STATUS:CANCELLED y desaparecen.
 
@@ -19,7 +19,7 @@ pasar de 75 caracteres. Implementacion siguiendo RFC 5545.
 import re
 import unicodedata
 from datetime import date, datetime, timedelta, timezone
-from typing import Iterable, Optional
+from typing import Iterable, List, Optional
 
 
 # ════════════════════════════════════════════════════════════════════
@@ -28,7 +28,6 @@ from typing import Iterable, Optional
 
 # VTIMEZONE Europe/Madrid completo. Necesario para que iOS / macOS
 # Calendar muestren las horas correctamente con cambio de hora europeo.
-# Las reglas son las oficiales de la Union Europea (CEST/CET).
 _VTIMEZONE_MADRID = (
     "BEGIN:VTIMEZONE\r\n"
     "TZID:Europe/Madrid\r\n"
@@ -49,12 +48,12 @@ _VTIMEZONE_MADRID = (
     "END:VTIMEZONE\r\n"
 )
 
-# Duracion default de una reserva en minutos cuando no hay hora_fin
-# explicita en BD. 90 min es el estandar de la mayoria de restaurantes.
-_DURACION_DEFAULT_MIN = 90
+# Duracion default cuando no hay hora_fin explicita en BD.
+# 30 min cubre un corte basico; el resto de servicios siempre traeran
+# hora_fin calculada desde la suma de duraciones.
+_DURACION_DEFAULT_MIN = 30
 
-# PRODID identifica al generador. RFC pide formato -//Vendor//Product//Lang.
-_PRODID = "-//Alnora IA//Demo Restaurante iCal Feed//ES"
+_PRODID = "-//Alnora IA//Demo Peluqueria iCal Feed//ES"
 
 
 # ════════════════════════════════════════════════════════════════════
@@ -62,13 +61,7 @@ _PRODID = "-//Alnora IA//Demo Restaurante iCal Feed//ES"
 # ════════════════════════════════════════════════════════════════════
 
 def _escape_text(s: Optional[str]) -> str:
-    """
-    Escapa caracteres reservados en TEXT segun RFC 5545:
-    - Backslash      -> \\\\
-    - Coma           -> \\,
-    - Punto y coma   -> \\;
-    - Newline        -> \\n
-    """
+    """Escapa caracteres reservados en TEXT segun RFC 5545."""
     if not s:
         return ""
     out = str(s)
@@ -80,11 +73,7 @@ def _escape_text(s: Optional[str]) -> str:
 
 
 def _fold_line(line: str) -> str:
-    """
-    iCal exige lineas <=75 octetos. Si pasa, hay que partir y empezar
-    cada continuacion con un espacio (line folding RFC 5545 sec 3.1).
-    Trabajamos en bytes UTF-8 para no romper caracteres multi-byte.
-    """
+    """iCal exige lineas <=75 octetos. Line folding RFC 5545 sec 3.1."""
     raw = line.encode("utf-8")
     if len(raw) <= 75:
         return line
@@ -92,13 +81,11 @@ def _fold_line(line: str) -> str:
     i = 0
     primero = True
     while i < len(raw):
-        # Cortar en limite seguro de UTF-8 sin partir code points.
-        chunk_size = 75 if primero else 74  # un espacio menos en las continuaciones
+        chunk_size = 75 if primero else 74
         end = min(i + chunk_size, len(raw))
-        # Retroceder si caemos en medio de un caracter multibyte
         while end > i and (raw[end - 1] & 0xC0) == 0x80:
             end -= 1
-        if end == i:  # sanity guard
+        if end == i:
             end = min(i + chunk_size, len(raw))
         chunk = raw[i:end].decode("utf-8", errors="replace")
         pieces.append(("" if primero else " ") + chunk)
@@ -108,21 +95,17 @@ def _fold_line(line: str) -> str:
 
 
 def _fmt_dt_local(d: date, hora_str: str) -> str:
-    """
-    Formatea fecha + hora a la forma iCal floating-local con TZID:
-    YYYYMMDDTHHMMSS (sin Z, porque el TZID se especifica aparte).
-    Acepta hora "HH:MM" o "HH:MM:SS".
-    """
-    h = (hora_str or "21:00").split(".")[0]
+    """YYYYMMDDTHHMMSS sin Z (TZID se especifica aparte)."""
+    h = (hora_str or "10:00").split(".")[0]
     parts = h.split(":")
-    hh = int(parts[0]) if parts and parts[0].isdigit() else 21
+    hh = int(parts[0]) if parts and parts[0].isdigit() else 10
     mm = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else 0
     ss = int(parts[2]) if len(parts) > 2 and parts[2].isdigit() else 0
     return f"{d.strftime('%Y%m%d')}T{hh:02d}{mm:02d}{ss:02d}"
 
 
 def _fmt_dt_utc(dt: datetime) -> str:
-    """Formato UTC para DTSTAMP, LAST-MODIFIED: YYYYMMDDTHHMMSSZ."""
+    """YYYYMMDDTHHMMSSZ para DTSTAMP / LAST-MODIFIED."""
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     else:
@@ -131,7 +114,6 @@ def _fmt_dt_utc(dt: datetime) -> str:
 
 
 def _parsear_fecha(s: Optional[str]) -> Optional[date]:
-    """ISO YYYY-MM-DD -> date. None si invalido."""
     if not s:
         return None
     try:
@@ -141,7 +123,6 @@ def _parsear_fecha(s: Optional[str]) -> Optional[date]:
 
 
 def _parsear_iso_dt(s: Optional[str]) -> Optional[datetime]:
-    """ISO 8601 (con o sin Z, con o sin offset) -> datetime aware."""
     if not s:
         return None
     try:
@@ -155,53 +136,51 @@ def _parsear_iso_dt(s: Optional[str]) -> Optional[datetime]:
 
 
 def _slug_dominio(s: str) -> str:
-    """
-    Reduce un texto a un slug ASCII apto para usar en el dominio del UID
-    (ej: "Casa Lola" -> "casalola"). Solo letras y digitos.
-    """
+    """'Salon Mara' -> 'salonmara'. Default 'salon' si vacio."""
     if not s:
-        return "restaurante"
+        return "salon"
     nfd = unicodedata.normalize("NFD", str(s))
     sin_tildes = "".join(c for c in nfd if unicodedata.category(c) != "Mn")
     limpio = re.sub(r"[^a-zA-Z0-9]", "", sin_tildes).lower()
-    return limpio or "restaurante"
+    return limpio or "salon"
 
 
 # ════════════════════════════════════════════════════════════════════
 # Generacion del feed
 # ════════════════════════════════════════════════════════════════════
 
-def _vevent_de_reserva(
-    reserva: dict,
+def _vevent_de_cita(
+    cita: dict,
     *,
     location: str,
     uid_dominio: str,
     duracion_default_min: int,
     ahora_utc: datetime,
+    estilista_resolver=None,
 ) -> Optional[str]:
     """
-    Construye un VEVENT a partir de una fila de la tabla `reservas`.
-    Devuelve None si la reserva no tiene fecha valida.
+    Construye un VEVENT a partir de una fila de la tabla `citas`.
+    Devuelve None si la cita no tiene fecha valida.
+
+    Args:
+        estilista_resolver: callable opcional que recibe id_yaml y
+            devuelve el dict del estilista (para mostrar nombre publico).
+            Si None, se muestra el id_yaml tal cual.
     """
-    fecha = _parsear_fecha(reserva.get("fecha"))
+    fecha = _parsear_fecha(cita.get("fecha"))
     if fecha is None:
         return None
 
-    hora = reserva.get("hora") or "21:00"
-    dtstart_local = _fmt_dt_local(fecha, hora)
+    hora_inicio = (cita.get("hora_inicio") or "10:00")[:5]
+    dtstart_local = _fmt_dt_local(fecha, hora_inicio)
 
-    # Hora de fin: usar hora_fin real si existe, si no estimar segun
-    # turno o duracion default.
-    hora_fin = reserva.get("hora_fin")
+    hora_fin = (cita.get("hora_fin") or "")[:5]
     if hora_fin:
         dtend_local = _fmt_dt_local(fecha, hora_fin)
     else:
-        # Calcular fin con duracion default. Si pasa de medianoche se
-        # corta a 23:59 para no rodar al dia siguiente (caso raro).
         try:
-            h_str = (hora or "21:00").split(".")[0]
-            partes = h_str.split(":")
-            hh = int(partes[0]) if partes else 21
+            partes = hora_inicio.split(":")
+            hh = int(partes[0]) if partes else 10
             mm = int(partes[1]) if len(partes) > 1 else 0
             base = datetime(fecha.year, fecha.month, fecha.day, hh, mm)
             fin_dt = base + timedelta(minutes=duracion_default_min)
@@ -211,67 +190,64 @@ def _vevent_de_reserva(
         except (ValueError, TypeError):
             dtend_local = _fmt_dt_local(fecha, "23:00")
 
-    nombre = (reserva.get("nombre") or "Reserva sin nombre").strip()
-    num = reserva.get("num_personas") or "?"
-    canal = (reserva.get("canal_origen") or "").strip()
-    estado = (reserva.get("estado") or "confirmada").lower()
+    nombre = (cita.get("nombre") or "Cita sin nombre").strip()
+    canal = (cita.get("canal_origen") or "").strip()
+    estado = (cita.get("estado") or "confirmada").lower()
 
-    # Marcas visuales en el SUMMARY: cancelada y no-show son los que
-    # mas conviene ver de un vistazo en el calendario del movil.
+    # Resolver nombre del estilista
+    id_yaml = cita.get("estilista_id_yaml") or ""
+    estilista_nombre = id_yaml
+    if estilista_resolver and id_yaml:
+        e = estilista_resolver(id_yaml)
+        if e:
+            estilista_nombre = e.get("nombre") or id_yaml
+
+    # Servicios: pueden venir embebidos en la cita o no. La capa que
+    # llama (admin webhook) los une previamente como "servicios_str".
+    servicios_str = cita.get("servicios_str") or cita.get("servicios") or ""
+    if isinstance(servicios_str, list):
+        servicios_str = ", ".join(str(s) for s in servicios_str if s)
+
+    # SUMMARY: marcas visibles para escanear de un vistazo en el movil
     if estado == "cancelada":
-        summary = f"[CANCELADA] {nombre} ({num}p)"
+        summary_extra = f" — {servicios_str}" if servicios_str else ""
+        summary = f"[CANCELADA] {nombre} ({estilista_nombre}){summary_extra}"
         ical_status = "CANCELLED"
-    elif estado == "no_show":
-        summary = f"[NO-SHOW] {nombre} ({num}p)"
-        ical_status = "CONFIRMED"
     else:
-        summary = f"{nombre} ({num}p)"
+        summary_extra = f" — {servicios_str}" if servicios_str else ""
+        summary = f"{nombre} ({estilista_nombre}){summary_extra}"
         ical_status = "CONFIRMED"
 
-    # DESCRIPTION: bloque completo con todos los datos para que el
-    # dueno tenga contexto sin abrir el panel.
-    desc_partes = []
-    if reserva.get("telefono"):
-        desc_partes.append(f"Telefono: {reserva['telefono']}")
-    if reserva.get("turno"):
-        desc_partes.append(f"Turno: {reserva['turno']}")
-    if reserva.get("alergias"):
-        desc_partes.append(f"Alergias: {reserva['alergias']}")
-    if reserva.get("ocasion_especial"):
-        desc_partes.append(f"Ocasion: {reserva['ocasion_especial']}")
-    if reserva.get("notas"):
-        desc_partes.append(f"Notas: {reserva['notas']}")
+    desc_partes: List[str] = []
+    if cita.get("telefono"):
+        desc_partes.append(f"Telefono: {cita['telefono']}")
+    if estilista_nombre:
+        desc_partes.append(f"Estilista: {estilista_nombre}")
+    if servicios_str:
+        desc_partes.append(f"Servicios: {servicios_str}")
+    if cita.get("alergias"):
+        desc_partes.append(f"Alergias: {cita['alergias']}")
+    if cita.get("notas"):
+        desc_partes.append(f"Notas: {cita['notas']}")
     if canal:
         canal_legible = {
             "web": "Chat web",
             "whatsapp": "WhatsApp",
-            "voz": "Telefono (Lola)",
+            "voz": "Telefono (Mara)",
             "escalacion": "Escalada al equipo",
         }.get(canal, canal)
         desc_partes.append(f"Canal: {canal_legible}")
-    if reserva.get("mesas_asignadas"):
-        # Lista de UUIDs; el dueno no los necesita pero deja constancia
-        # de cuantas mesas hay agrupadas.
-        n_mesas = len(reserva["mesas_asignadas"])
-        if n_mesas > 1:
-            desc_partes.append(f"Mesas agrupadas: {n_mesas}")
     description = "\\n".join(_escape_text(p) for p in desc_partes)
 
-    # UID estable por reserva: si la reserva se modifica, el evento se
-    # actualiza en el calendario del dueno en lugar de duplicarse.
-    uid = f"reserva-{reserva.get('id', 'sin-id')}@{uid_dominio}"
+    # UID estable por cita: si la cita se modifica, el evento se
+    # actualiza en el calendario en lugar de duplicarse.
+    uid = f"cita-{cita.get('id', 'sin-id')}@{uid_dominio}"
 
-    # LAST-MODIFIED: si hay updated_at, lo usamos; si no, created_at;
-    # si tampoco, ahora.
     last_mod_dt = (
-        _parsear_iso_dt(reserva.get("updated_at"))
-        or _parsear_iso_dt(reserva.get("created_at"))
+        _parsear_iso_dt(cita.get("updated_at"))
+        or _parsear_iso_dt(cita.get("created_at"))
         or ahora_utc
     )
-
-    # SEQUENCE: incremento monotono para que clients respeten el update.
-    # Sin tabla de versiones, usamos timestamp UNIX truncado a minutos
-    # del updated_at: cada modificacion da un valor mayor al anterior.
     sequence = int(last_mod_dt.timestamp() // 60)
 
     lineas = [
@@ -286,8 +262,6 @@ def _vevent_de_reserva(
         f"LOCATION:{_escape_text(location)}",
         f"DESCRIPTION:{description}",
         f"STATUS:{ical_status}",
-        # TRANSPARENT: la reserva no marca al dueno como ocupado en otros
-        # calendarios si los tiene compartidos; es informativo.
         "TRANSP:TRANSPARENT",
         "END:VEVENT",
     ]
@@ -295,39 +269,35 @@ def _vevent_de_reserva(
 
 
 def generar_ics_feed(
-    reservas: Iterable[dict],
+    citas: Iterable[dict],
     *,
-    nombre_restaurante: str,
-    direccion_restaurante: str,
+    nombre_salon: str,
+    direccion_salon: str,
     duracion_default_min: int = _DURACION_DEFAULT_MIN,
     ahora_utc: Optional[datetime] = None,
+    estilista_resolver=None,
 ) -> str:
     """
     Construye el feed iCal completo (VCALENDAR) a partir de una lista
-    de reservas (filas de la tabla `reservas` de Supabase, cada una
-    como dict con sus campos).
+    de citas (filas de la tabla `citas` de Supabase).
 
     Args:
-        reservas: iterable de dicts con campos id, fecha, hora, nombre,
-            num_personas, telefono, turno, alergias, ocasion_especial,
-            notas, canal_origen, estado, mesas_asignadas, hora_fin,
-            created_at, updated_at.
-        nombre_restaurante: para el X-WR-CALNAME (titulo del calendario
-            que ve el dueno en su movil).
-        direccion_restaurante: para el campo LOCATION de cada evento.
-        duracion_default_min: duracion estimada cuando no hay hora_fin
-            en la reserva. Default 90 min.
-        ahora_utc: para tests deterministas. Default datetime.now(utc).
-
-    Returns:
-        String con el iCal completo, listo para devolver con
-        Content-Type text/calendar.
+        citas: iterable de dicts con campos id, fecha, hora_inicio,
+            hora_fin, nombre, telefono, estilista_id_yaml, alergias,
+            notas, canal_origen, estado, servicios_str, created_at,
+            updated_at.
+        nombre_salon: titulo del calendario que ve el duenno.
+        direccion_salon: para LOCATION de cada evento.
+        duracion_default_min: cuando no hay hora_fin en BD. Default 30.
+        ahora_utc: para tests deterministas.
+        estilista_resolver: callable id_yaml -> dict para mostrar nombre
+            publico en lugar del id.
     """
     if ahora_utc is None:
         ahora_utc = datetime.now(timezone.utc)
 
-    uid_dominio = _slug_dominio(nombre_restaurante) + ".alnora.es"
-    cal_name = f"Reservas — {nombre_restaurante}"
+    uid_dominio = _slug_dominio(nombre_salon) + ".alnora.es"
+    cal_name = f"Citas — {nombre_salon}"
 
     cabecera = [
         "BEGIN:VCALENDAR",
@@ -336,24 +306,23 @@ def generar_ics_feed(
         "CALSCALE:GREGORIAN",
         "METHOD:PUBLISH",
         f"X-WR-CALNAME:{_escape_text(cal_name)}",
-        f"X-WR-CALDESC:{_escape_text('Reservas del restaurante en tiempo real.')}",
+        f"X-WR-CALDESC:{_escape_text('Citas del salon en tiempo real.')}",
         "X-WR-TIMEZONE:Europe/Madrid",
-        # Refresh hint: 1 hora. Apple Calendar lo respeta; Google ignora
-        # y refresca cada ~4-12h.
         "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
         "X-PUBLISHED-TTL:PT1H",
     ]
     cabecera_str = "\r\n".join(_fold_line(l) for l in cabecera) + "\r\n"
 
     eventos_str = "".join(
-        _vevent_de_reserva(
-            r,
-            location=direccion_restaurante,
+        _vevent_de_cita(
+            c,
+            location=direccion_salon,
             uid_dominio=uid_dominio,
             duracion_default_min=duracion_default_min,
             ahora_utc=ahora_utc,
+            estilista_resolver=estilista_resolver,
         ) or ""
-        for r in reservas
+        for c in citas
     )
 
     return cabecera_str + _VTIMEZONE_MADRID + eventos_str + "END:VCALENDAR\r\n"

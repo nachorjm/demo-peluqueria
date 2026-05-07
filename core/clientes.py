@@ -1,8 +1,8 @@
 """
-CRM unificado del restaurante: upsert_cliente.
+CRM unificado del salon: upsert_cliente.
 
 La tabla `clientes` es la vista unica de cualquier cliente que entre por
-cualquier canal del restaurante:
+cualquier canal del salon:
 
     web          -> formulario de la landing y chatbot web
     whatsapp     -> chatbot de WhatsApp
@@ -10,9 +10,8 @@ cualquier canal del restaurante:
     escalacion   -> agente telefonico tras escalar al duenno
 
 La clave de identificacion es el TELEFONO normalizado (formato +34XXXXXXXXX).
-A diferencia de la plantilla Alnora (que identificaba por email), aqui el
-telefono es el dato natural: en hosteleria casi nadie da el email pero
-casi todos dan el telefono para confirmar la reserva.
+El telefono es el dato natural: en peluqueria casi nadie da el email pero
+casi todos dan el telefono para confirmar la cita.
 
 Si no hay telefono (caso raro: cliente de la web que solo dejo email),
 se rastrea aun asi pero en una fila con telefono NULL — tipico solo del
@@ -25,8 +24,8 @@ Uso:
         nombre="Marta Soler",
         canal_origen="whatsapp",
         email="marta@ejemplo.com",
-        alergias="frutos secos",
-        notas="Pidio mesa terraza si llueve no",
+        alergias="alergica a parafenilendiamina",
+        notas="Pelo largo, prefiere balayage rubio",
     )
 """
 from datetime import datetime, timezone

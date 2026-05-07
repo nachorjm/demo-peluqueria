@@ -1,14 +1,14 @@
 """
-Router FastAPI para la landing del restaurante.
+Router FastAPI para la landing del salon.
 
 Endpoint(s):
-  - POST /supabase/webhook/reserva-nueva
+  - POST /supabase/webhook/cita-nueva
       Lo llama Supabase via Database Webhook cuando hay un INSERT en la
-      tabla `reservas`. Envia email de notificacion al dueño.
-  - POST /supabase/webhook/reserva-modificada  (issue #31)
+      tabla `citas`. Envia email de notificacion al duenno.
+  - POST /supabase/webhook/cita-modificada
       Lo llama Supabase via Database Webhook cuando hay un UPDATE en la
-      tabla `reservas`. Envia email diferenciado (modificacion o
-      cancelacion, con tabla de cambios old->new) al dueño.
+      tabla `citas`. Envia email diferenciado (modificacion o
+      cancelacion, con tabla de cambios old->new) al duenno.
 """
 import hmac
 import os
@@ -16,8 +16,9 @@ from typing import Optional
 
 from fastapi import APIRouter, Header, HTTPException, Request
 
+from core.config import supabase
 from core.logger import get_logger
-from core.notifications import notificar_cambio_reserva, notificar_nueva_reserva
+from core.notifications import notificar_cambio_cita, notificar_nueva_cita
 
 log = get_logger(__name__)
 
@@ -27,28 +28,46 @@ router = APIRouter()
 WEBHOOK_SECRET = os.environ.get("SUPABASE_WEBHOOK_SECRET", "").strip()
 
 
-@router.post("/supabase/webhook/reserva-nueva")
-async def supabase_reserva_nueva(
+def _cargar_servicios_de_cita(cita_id: str) -> list:
+    """Helper local para no acoplar al modulo core.citas (que importa muchas cosas)."""
+    if not cita_id:
+        return []
+    try:
+        res = (
+            supabase.table("cita_servicios")
+            .select("*")
+            .eq("cita_id", cita_id)
+            .order("orden", desc=False)
+            .execute()
+        )
+        return res.data or []
+    except Exception as e:
+        log.warning("Error cargando cita_servicios %s: %s", cita_id, e)
+        return []
+
+
+@router.post("/supabase/webhook/cita-nueva")
+async def supabase_cita_nueva(
     request: Request,
     x_webhook_secret: Optional[str] = Header(default=None, alias="X-Webhook-Secret"),
 ):
     """
-    Recibe eventos de Supabase cuando se inserta una fila en `reservas`.
+    Recibe eventos de Supabase cuando se inserta una fila en `citas`.
 
     Payload esperado:
     {
       "type": "INSERT",
-      "table": "reservas",
+      "table": "citas",
       "schema": "public",
       "record": {
         "id": "...",
         "nombre": "...",
         "telefono": "...",
         "fecha": "...",
-        "hora": "...",
-        "num_personas": 4,
+        "hora_inicio": "...",
+        "hora_fin": "...",
+        "estilista_id_yaml": "...",
         "alergias": "...",
-        "ocasion_especial": "...",
         "notas": "...",
         "canal_origen": "web",
         "estado": "confirmada",
@@ -65,7 +84,7 @@ async def supabase_reserva_nueva(
             log.warning("Webhook Supabase con secreto invalido. Rechazado.")
             raise HTTPException(status_code=401, detail="Invalid webhook secret")
 
-    # 2. Parsear el payload
+    # 2. Parsear payload
     try:
         payload = await request.json()
     except Exception as e:
@@ -77,24 +96,28 @@ async def supabase_reserva_nueva(
     record = payload.get("record") or {}
 
     log.info("Supabase webhook: %s on %s | record id=%s %s %s",
-             event_type, table, record.get("id"), record.get("fecha"), record.get("hora"))
+             event_type, table, record.get("id"), record.get("fecha"),
+             record.get("hora_inicio"))
 
-    # 3. Solo nos interesan INSERT sobre `reservas` con estado confirmada
-    if event_type != "INSERT" or table != "reservas":
-        log.info("Ignorado: no es INSERT en reservas.")
-        return {"status": "ignored", "reason": "not an INSERT on reservas"}
+    # 3. Solo nos interesan INSERT sobre `citas` con estado confirmada
+    if event_type != "INSERT" or table != "citas":
+        log.info("Ignorado: no es INSERT en citas.")
+        return {"status": "ignored", "reason": "not an INSERT on citas"}
 
     if record.get("estado") and record.get("estado") != "confirmada":
         log.info("Ignorado: estado=%s.", record.get("estado"))
-        return {"status": "ignored", "reason": "reserva no confirmada"}
+        return {"status": "ignored", "reason": "cita no confirmada"}
 
-    # 4. Enviar email
-    result = notificar_nueva_reserva(record)
+    # 4. Cargar servicios asociados a la cita para incluirlos en el email
+    servicios = _cargar_servicios_de_cita(record.get("id"))
+
+    # 5. Enviar email
+    result = notificar_nueva_cita(record, servicios=servicios)
 
     if result["ok"]:
-        log.info("Email de nueva reserva enviado (id=%s)", result["id"])
+        log.info("Email de nueva cita enviado (id=%s)", result["id"])
     else:
-        log.error("Error enviando email de nueva reserva: %s", result["error"])
+        log.error("Error enviando email de nueva cita: %s", result["error"])
 
     return {
         "status": "ok" if result["ok"] else "error",
@@ -103,43 +126,21 @@ async def supabase_reserva_nueva(
     }
 
 
-@router.post("/supabase/webhook/reserva-modificada")
-async def supabase_reserva_modificada(
+@router.post("/supabase/webhook/cita-modificada")
+async def supabase_cita_modificada(
     request: Request,
     x_webhook_secret: Optional[str] = Header(default=None, alias="X-Webhook-Secret"),
 ):
     """
-    Recibe eventos de Supabase cuando se actualiza una fila en `reservas`
-    (issue #31).
-
-    Payload esperado de Supabase DB webhook UPDATE:
-    {
-      "type": "UPDATE",
-      "table": "reservas",
-      "schema": "public",
-      "record": { ... fila nueva ... },
-      "old_record": { ... fila previa ... }
-    }
-
-    Logica:
-      - Filtramos a cambios en campos relevantes (fecha, hora,
-        num_personas, estado, alergias, ocasion, notas). Cambios
-        solo en campos internos (updated_at, recordatorio_enviado_at,
-        mesas_asignadas) se ignoran sin email.
-      - Si el cambio es una CANCELACION (estado: confirmada -> cancelada),
-        email con subject "Reserva CANCELADA" (rojo).
-      - Si es otro cambio relevante, subject "Reserva MODIFICADA" (naranja)
-        con tabla old -> new.
+    Recibe eventos UPDATE en `citas`. Distingue cancelacion de modificacion.
     """
-    # 1. Verificar secreto
     if WEBHOOK_SECRET:
         if not x_webhook_secret or not hmac.compare_digest(
             x_webhook_secret, WEBHOOK_SECRET
         ):
-            log.warning("Webhook reserva-modificada con secreto invalido. Rechazado.")
+            log.warning("Webhook cita-modificada con secreto invalido. Rechazado.")
             raise HTTPException(status_code=401, detail="Invalid webhook secret")
 
-    # 2. Parsear payload
     try:
         payload = await request.json()
     except Exception as e:
@@ -151,26 +152,22 @@ async def supabase_reserva_modificada(
     record = payload.get("record") or {}
     old_record = payload.get("old_record") or {}
 
-    log.info(
-        "Supabase webhook: %s on %s | record id=%s",
-        event_type, table, record.get("id"),
-    )
+    log.info("Supabase webhook: %s on %s | record id=%s",
+             event_type, table, record.get("id"))
 
-    # 3. Filtrar: solo UPDATE en tabla reservas
-    if event_type != "UPDATE" or table != "reservas":
-        log.info("Ignorado: no es UPDATE en reservas (type=%s, table=%s).",
+    if event_type != "UPDATE" or table != "citas":
+        log.info("Ignorado: no es UPDATE en citas (type=%s, table=%s).",
                  event_type, table)
-        return {"status": "ignored", "reason": "not an UPDATE on reservas"}
+        return {"status": "ignored", "reason": "not an UPDATE on citas"}
 
-    # 4. Calcular diff y decidir si enviar email
-    result = notificar_cambio_reserva(old_record, record)
+    result = notificar_cambio_cita(old_record, record)
 
     if result.get("skipped"):
         log.info("Cambio sin campos relevantes: ignorado (no email).")
         return {"status": "ignored", "reason": "cambio solo en campos internos"}
 
     if result.get("ok"):
-        log.info("Email de cambio de reserva enviado (id=%s)", result.get("id"))
+        log.info("Email de cambio de cita enviado (id=%s)", result.get("id"))
     else:
         log.error("Error enviando email de cambio: %s", result.get("error"))
 

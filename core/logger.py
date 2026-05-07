@@ -7,8 +7,8 @@ con niveles (DEBUG, INFO, WARNING, ERROR). Beneficios:
   - Filtrado por nivel en Railway (LOG_LEVEL env var).
   - Timestamps automaticos.
   - Stack traces completos en errores (exc_info=True).
-  - Cada modulo tiene su propio sub-logger ("casalola.web",
-    "casalola.whatsapp", etc) -> facil filtrar por canal.
+  - Cada modulo tiene su propio sub-logger ("salonmara.web",
+    "salonmara.whatsapp", etc) -> facil filtrar por canal.
 
 USO en cada modulo:
 
@@ -84,11 +84,11 @@ def setup_logging(level: Optional[str] = None) -> None:
 
 def get_logger(name: str) -> logging.Logger:
     """
-    Devuelve un logger con nombre normalizado bajo "casalola.*".
+    Devuelve un logger con nombre normalizado bajo "salonmara.*".
     Acepta __name__ del modulo y lo recorta a algo legible:
-       "chatbot_whatsapp.webhook" -> "casalola.whatsapp.webhook"
-       "core.reservas"            -> "casalola.reservas"
-       "agente_telefonico.tools"  -> "casalola.voz.tools"
+       "chatbot_whatsapp.webhook" -> "salonmara.whatsapp.webhook"
+       "core.citas"               -> "salonmara.citas"
+       "agente_telefonico.tools"  -> "salonmara.voz.tools"
     """
     # Mapping de prefijos largos a nombres cortos en logs.
     alias = {
@@ -100,6 +100,6 @@ def get_logger(name: str) -> logging.Logger:
     if parts and parts[0] in alias:
         parts[0] = alias[parts[0]]
     if parts and parts[0] == "core":
-        parts = parts[1:]  # "core.reservas" -> "reservas"
+        parts = parts[1:]  # "core.citas" -> "citas"
     nombre_legible = ".".join(parts) if parts else name
-    return logging.getLogger(f"casalola.{nombre_legible}")
+    return logging.getLogger(f"salonmara.{nombre_legible}")

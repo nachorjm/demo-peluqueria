@@ -1,13 +1,15 @@
 """
-webhook.py — Router FastAPI del agente telefonico (Vapi) para Casa Lola
------------------------------------------------------------------------
-El agente de voz se llama Lola.
+webhook.py — Router FastAPI del agente telefonico (Vapi) para Salon Mara
+------------------------------------------------------------------------
+El agente de voz se llama Mara.
 
 Endpoints expuestos a Vapi (uno por tool):
-  - POST /vapi/tool/reservar_mesa
+  - POST /vapi/tool/agendar_cita
   - POST /vapi/tool/consultar_disponibilidad
-  - POST /vapi/tool/cancelar_reserva
-  - POST /vapi/tool/consultar_carta
+  - POST /vapi/tool/cancelar_cita
+  - POST /vapi/tool/buscar_citas
+  - POST /vapi/tool/modificar_cita
+  - POST /vapi/tool/consultar_servicios
   - POST /vapi/tool/consultar_horario
   - POST /vapi/tool/consultar_historial
   - POST /vapi/tool/escalar_a_humano
@@ -16,7 +18,7 @@ Endpoints expuestos a Vapi (uno por tool):
   - POST /vapi/server-url     (assistant-request + end-of-call-report)
 """
 import json
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 from fastapi import APIRouter, Request
 
@@ -30,16 +32,16 @@ from core.memory import (
 
 log = get_logger(__name__)
 from agente_telefonico.tools import (
-    tool_buscar_reservas,
-    tool_consultar_carta,
+    tool_agendar_cita,
+    tool_buscar_citas,
+    tool_cancelar_cita,
     tool_consultar_disponibilidad,
     tool_consultar_historial,
     tool_consultar_horario,
-    tool_cancelar_reserva,
+    tool_consultar_servicios,
     tool_derivar_a_whatsapp,
     tool_escalar_a_humano,
-    tool_modificar_reserva,
-    tool_reservar_mesa,
+    tool_modificar_cita,
 )
 
 
@@ -53,9 +55,7 @@ def _extract_tool_calls(payload: dict) -> list:
 
 
 def _extract_call_meta(payload: dict) -> tuple:
-    """
-    Devuelve (telefono_raw, vapi_call_id) del payload Vapi.
-    """
+    """Devuelve (telefono_raw, vapi_call_id) del payload Vapi."""
     message = payload.get("message", {})
     call_data = message.get("call", {})
     customer = call_data.get("customer", {})
@@ -65,7 +65,7 @@ def _extract_call_meta(payload: dict) -> tuple:
 
 
 def _parse_arguments(arguments: Any) -> dict:
-    """Vapi a veces envia arguments como string JSON: lo normalizamos."""
+    """Vapi a veces envia arguments como string JSON."""
     if isinstance(arguments, str):
         try:
             return json.loads(arguments)
@@ -81,13 +81,7 @@ async def _despacho_vapi(
     handler: Callable[[dict, str, str], dict],
     nombre_tool: str,
 ):
-    """
-    Wrapper comun: parsea payload Vapi, ejecuta `handler(args, telefono, call_id)`
-    para cada toolCall y devuelve el formato `{"results": [...]}` que Vapi espera.
-
-    `handler` recibe (args, telefono, vapi_call_id) y devuelve un dict con
-    al menos {"mensaje": "..."}.
-    """
+    """Wrapper comun: parsea payload Vapi y devuelve `{"results": [...]}`."""
     try:
         payload = await request.json()
         tool_calls = _extract_tool_calls(payload)
@@ -125,12 +119,12 @@ async def _despacho_vapi(
 # ════════════════════════════════════════════════════════════════════
 # ENDPOINTS POR TOOL
 # ════════════════════════════════════════════════════════════════════
-@router.post("/vapi/tool/reservar_mesa")
-async def vapi_reservar_mesa(request: Request):
+@router.post("/vapi/tool/agendar_cita")
+async def vapi_agendar_cita(request: Request):
     return await _despacho_vapi(
         request,
-        handler=lambda args, tel, _cid: tool_reservar_mesa(args, telefono=tel),
-        nombre_tool="reservar_mesa",
+        handler=lambda args, tel, _cid: tool_agendar_cita(args, telefono=tel),
+        nombre_tool="agendar_cita",
     )
 
 
@@ -143,41 +137,39 @@ async def vapi_consultar_disponibilidad(request: Request):
     )
 
 
-@router.post("/vapi/tool/cancelar_reserva")
-async def vapi_cancelar_reserva(request: Request):
+@router.post("/vapi/tool/cancelar_cita")
+async def vapi_cancelar_cita(request: Request):
     return await _despacho_vapi(
         request,
-        handler=lambda args, tel, _cid: tool_cancelar_reserva(args, telefono=tel),
-        nombre_tool="cancelar_reserva",
+        handler=lambda args, tel, _cid: tool_cancelar_cita(args, telefono=tel),
+        nombre_tool="cancelar_cita",
     )
 
 
-@router.post("/vapi/tool/buscar_reservas")
-async def vapi_buscar_reservas(request: Request):
-    """Issue #33: buscar reservas del cliente antes de cancelar."""
+@router.post("/vapi/tool/buscar_citas")
+async def vapi_buscar_citas(request: Request):
     return await _despacho_vapi(
         request,
-        handler=lambda args, tel, _cid: tool_buscar_reservas(args, telefono=tel),
-        nombre_tool="buscar_reservas",
+        handler=lambda args, tel, _cid: tool_buscar_citas(args, telefono=tel),
+        nombre_tool="buscar_citas",
     )
 
 
-@router.post("/vapi/tool/modificar_reserva")
-async def vapi_modificar_reserva(request: Request):
-    """Modifica una reserva in-place. UPDATE, no cancel+create."""
+@router.post("/vapi/tool/modificar_cita")
+async def vapi_modificar_cita(request: Request):
     return await _despacho_vapi(
         request,
-        handler=lambda args, tel, _cid: tool_modificar_reserva(args, telefono=tel),
-        nombre_tool="modificar_reserva",
+        handler=lambda args, tel, _cid: tool_modificar_cita(args, telefono=tel),
+        nombre_tool="modificar_cita",
     )
 
 
-@router.post("/vapi/tool/consultar_carta")
-async def vapi_consultar_carta(request: Request):
+@router.post("/vapi/tool/consultar_servicios")
+async def vapi_consultar_servicios(request: Request):
     return await _despacho_vapi(
         request,
-        handler=lambda args, _tel, _cid: tool_consultar_carta(args),
-        nombre_tool="consultar_carta",
+        handler=lambda args, _tel, _cid: tool_consultar_servicios(args),
+        nombre_tool="consultar_servicios",
     )
 
 
@@ -276,8 +268,8 @@ async def vapi_server_url(request: Request):
                     f"{resumen_previo}\n"
                     "═══════════════════════════════════════════════════════════\n\n"
                     "Saluda al cliente reconociendo lo que sabes de el. Por "
-                    "ejemplo: 'Hola de nuevo, ¿que tal? ¿Volvemos a reservar?' "
-                    "No le preguntes datos que ya te dio."
+                    "ejemplo: 'Hola de nuevo, ¿que tal? ¿Vienes a por otra "
+                    "cita?' No le preguntes datos que ya te dio."
                 )
                 assistant_overrides["model"] = {
                     "messages": [

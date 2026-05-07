@@ -1,0 +1,205 @@
+# ════════════════════════════════════════════════════════════════════
+# Configuracion de la peluqueria cliente — Salon Mara
+# ════════════════════════════════════════════════════════════════════
+#
+# Este fichero centraliza TODO lo especifico de Salon Mara. Para clonar
+# el repo a otra peluqueria nueva:
+#
+#   1. Copiar este fichero: cp config/peluqueria.example.yaml
+#      config/peluqueria.yaml
+#   2. Editar valores abajo con los del nuevo cliente.
+#   3. Crear Supabase nuevo, aplicar migraciones (carpeta supabase/).
+#   4. Configurar .env con credenciales propias.
+#   5. Desplegar en Railway.
+#
+# Todo lo que no este aqui (logica del bot, endpoints, tests) se
+# mantiene sin cambios.
+# ════════════════════════════════════════════════════════════════════
+
+# ─── Datos de contacto y ubicacion ─────────────────────────────────
+salon:
+  nombre: "Salon Mara"
+  tipo: "Peluqueria unisex"
+  ciudad: "Madrid"
+  barrio: "Malasana"
+  anno_fundacion: 2018
+  direccion: "C/ Espiritu Santo 34, 28004 Madrid"
+  telefono: "+34 911 22 33 44"
+  email: "hola@salonmara.es"
+  web: "https://salonmara.es"
+
+# ─── Politica de antelacion de citas ──────────────────────────────
+# Cada salon tiene la suya. Salon Mara acepta citas con minimo 2h de
+# antelacion (para preparar producto si hace falta) y a 60 dias vista.
+# Pon 0 en cualquier valor para desactivar ese limite.
+citas:
+  antelacion_minima_horas: 2
+  antelacion_maxima_dias: 60
+
+# ─── Horarios ─────────────────────────────────────────────────────
+# Lista de turnos por dia (lista vacia = cerrado).
+# Formato: [[apertura, cierre], [apertura, cierre], ...]
+# Salon Mara: lunes y domingo cerrado, M-V jornada continua, S manana.
+horarios:
+  lunes:     []
+  martes:    [["10:00", "20:00"]]
+  miercoles: [["10:00", "20:00"]]
+  jueves:    [["10:00", "20:00"]]
+  viernes:   [["10:00", "20:00"]]
+  sabado:    [["10:00", "15:00"]]
+  domingo:   []
+
+# ─── Identidad del bot (OBLIGATORIO si usa cualquier canal IA) ────
+# El bot tiene su propia personalidad. Se usa en los 3 canales
+# (web, WhatsApp, voz). Sin esto, los prompts caen a "asistente"
+# generico.
+bot:
+  nombre: "Mara"
+  descripcion: "asistente de Salon Mara"
+
+# ─── Landing publica (OPCIONAL) ───────────────────────────────────
+landing:
+  colores:
+    bg: "#1a1612"
+    cream: "#f9ecec"
+    accent: "#c87a8a"
+    gold: "#d4a24c"
+    text: "#3a2630"
+  slogan: "Tu pelo, tu momento"
+  tagline: "Peluqueria unisex en Malasana, Madrid"
+  favicon: "/static/branding/favicon.svg"
+  og_image: ""
+  logo: ""
+
+# ─── Widget chat web embebido (OPCIONAL) ──────────────────────────
+widget_web:
+  avatar_emoji: "💇"
+  mensaje_bienvenida: "Hola, soy Mara, asistente de Salon Mara. Puedo agendarte una cita, contarte los servicios o darte el horario. ¿En que te ayudo?"
+  colores:
+    burbuja_bot: "#FBE9E7"
+    burbuja_usuario: "#c87a8a"
+    fondo: "#FFFFFF"
+
+# ─── Notificaciones por email (RECOMENDADO) ───────────────────────
+emails:
+  from_address: ""
+  logo_url: ""
+
+# ─── URLs externas ────────────────────────────────────────────────
+google_review_url: "https://g.page/SalonMaraMadrid/review"
+
+# ─── CORS origenes permitidos ─────────────────────────────────────
+cors_origins:
+  - "https://salonmara.es"
+  - "https://www.salonmara.es"
+  - "http://localhost:3000"
+  - "http://127.0.0.1:3000"
+
+# ─── Estilistas / barberos ────────────────────────────────────────
+# Cada uno tiene un id_yaml estable (usado en BD), nombre publico,
+# rol descriptivo y lista de especialidades. Solo se ofrecen citas
+# con estilistas con activa=true.
+#
+# Especialidades validas: corte_mujer, corte_hombre, corte_nino,
+# barba, color, mechas, peinado, brushing, novias, tratamiento.
+estilistas:
+  - id_yaml: "mara"
+    nombre: "Mara"
+    rol: "Duenna y colorista"
+    especialidades: [color, mechas, novias, corte_mujer, tratamiento]
+    activa: true
+  - id_yaml: "lucia"
+    nombre: "Lucia"
+    rol: "Estilista"
+    especialidades: [corte_mujer, corte_hombre, peinado, brushing, tratamiento]
+    activa: true
+  - id_yaml: "diego"
+    nombre: "Diego"
+    rol: "Barbero"
+    especialidades: [corte_hombre, barba, corte_nino]
+    activa: true
+
+# ─── Catalogo de servicios ────────────────────────────────────────
+# Cada servicio: nombre, precio (eur), duracion_min, descripcion,
+# especialidad (debe estar en alguna lista de especialidades).
+# La especialidad se usa para asignar estilistas compatibles.
+servicios:
+  corte:
+    - nombre: "Corte mujer"
+      precio: 28.00
+      duracion_min: 45
+      descripcion: "Corte y acabado para cabello largo o medio."
+      especialidad: corte_mujer
+    - nombre: "Corte hombre"
+      precio: 18.00
+      duracion_min: 30
+      descripcion: "Corte clasico o moderno con maquina y tijera."
+      especialidad: corte_hombre
+    - nombre: "Corte nino"
+      precio: 14.00
+      duracion_min: 25
+      descripcion: "Corte para menores de 12 anos."
+      especialidad: corte_nino
+    - nombre: "Corte y barba"
+      precio: 26.00
+      duracion_min: 45
+      descripcion: "Corte de hombre mas arreglo y perfilado de barba."
+      especialidad: barba
+
+  color:
+    - nombre: "Coloracion raiz"
+      precio: 45.00
+      duracion_min: 75
+      descripcion: "Tinte solo en raices, color uniforme."
+      especialidad: color
+    - nombre: "Coloracion completa"
+      precio: 65.00
+      duracion_min: 120
+      descripcion: "Tinte total con tratamiento de hidratacion incluido."
+      especialidad: color
+    - nombre: "Mechas o balayage"
+      precio: 95.00
+      duracion_min: 150
+      descripcion: "Mechas tradicionales o balayage segun te quede mejor."
+      especialidad: mechas
+
+  peinados:
+    - nombre: "Brushing"
+      precio: 22.00
+      duracion_min: 35
+      descripcion: "Lavado, secado y peinado profesional."
+      especialidad: brushing
+    - nombre: "Peinado evento"
+      precio: 38.00
+      duracion_min: 60
+      descripcion: "Peinado para boda, comunion o evento especial."
+      especialidad: peinado
+    - nombre: "Peinado novia"
+      precio: 75.00
+      duracion_min: 90
+      descripcion: "Peinado de novia con prueba previa incluida."
+      especialidad: novias
+
+  tratamientos:
+    - nombre: "Tratamiento hidratante"
+      precio: 28.00
+      duracion_min: 45
+      descripcion: "Mascarilla profesional para cabello seco o danado."
+      especialidad: tratamiento
+    - nombre: "Lavado y peinado rapido"
+      precio: 15.00
+      duracion_min: 25
+      descripcion: "Lavado y peinado sin secador profesional."
+      especialidad: brushing
+
+  barba:
+    - nombre: "Arreglo barba"
+      precio: 12.00
+      duracion_min: 20
+      descripcion: "Perfilado y recorte de barba."
+      especialidad: barba
+    - nombre: "Afeitado tradicional"
+      precio: 18.00
+      duracion_min: 30
+      descripcion: "Afeitado con navaja, toalla caliente y aftershave."
+      especialidad: barba

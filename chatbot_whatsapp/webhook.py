@@ -1,6 +1,6 @@
 """
-webhook.py — Router FastAPI del chatbot WhatsApp de Casa Lola
--------------------------------------------------------------
+webhook.py — Router FastAPI del chatbot WhatsApp de Salon Mara
+--------------------------------------------------------------
 Endpoints publicos:
   - POST /whatsapp        (Twilio sandbox, form-data + TwiML)
   - GET  /whatsapp/meta   (handshake Meta Cloud API)
@@ -10,11 +10,12 @@ Flujo:
   1. Recibe mensajes de WhatsApp.
   2. Carga el historial del telefono desde Supabase.
   3. Si el telefono tiene un seguimiento pendiente desde una llamada de
-     voz (Lola no pudo capturar un dato), se inyecta contexto extra.
+     voz (Mara no pudo capturar un dato), se inyecta contexto extra.
   4. Envia mensaje + historial + tools a Claude.
   5. Si Claude pide tool, se ejecuta y se vuelve a llamar a Claude.
   6. Guarda en Supabase y responde via TwiML (Twilio) o POST async (Meta).
 """
+import re
 from typing import Optional
 
 from fastapi import APIRouter, Form, Request, Response
@@ -33,28 +34,15 @@ from core.guardrails import (
     mensaje_auto_retry,
 )
 from core.lang_detect import detectar_idioma, bloque_idioma_para_prompt
-from core.recordatorios import (
-    reserva_con_recordatorio_reciente,
-    procesar_respuesta_recordatorio,
-)
-from core.lista_espera import (
-    candidato_con_oferta_reciente,
-    procesar_respuesta_oferta,
-)
-from core.encuestas import (
-    reserva_con_encuesta_reciente,
-    procesar_respuesta_encuesta,
-)
 from chatbot_whatsapp.tools import TOOLS, ejecutar_tool
 
 
 _ESTADOS_EXITO_POR_TOOL = {
-    "reservar_mesa": {"creada", "actualizada", "sin_cambios"},
-    "modificar_reserva": {"actualizada", "sin_cambios"},
-    "cancelar_reserva": {"cancelada", "ya_cancelada"},
+    "agendar_cita": {"creada", "actualizada", "sin_cambios", "duplicada"},
+    "modificar_cita": {"actualizada", "sin_cambios"},
+    "cancelar_cita": {"cancelada", "ya_cancelada"},
     "escalar_a_humano": {"ok"},
     "derivar_a_whatsapp": {"ok"},
-    "apuntar_lista_espera": {"ok", "ya_en_lista"},
 }
 
 
@@ -74,23 +62,15 @@ def _tool_ejecutada_ok(tool_name: str, resultado_str: str) -> bool:
 def _normalizar_asteriscos_wa(texto: str) -> str:
     """
     WhatsApp solo renderiza negrita con UN asterisco a cada lado (*asi*),
-    no con dos (**asi**). Si el modelo se despista y genera markdown
-    estandar (comun en respuestas largas tipo lista/carta), convertimos
-    los pares `**...**` en `*...*` antes de enviarlo al cliente. Fail-safe
-    para reforzar el prompt (issue #22 follow-up tras QA).
-
-    Regex no-greedy para no romper pares cruzados. Tolera espacios entre
-    asteriscos y texto. No toca asteriscos aislados o impares.
+    no con dos (**asi**). Convertimos `**...**` a `*...*` antes de enviar.
     """
     if not texto:
         return texto
-    # Sustituye **x** por *x* (no-greedy, permite saltos de linea)
-    import re
     return re.sub(r"\*\*(.+?)\*\*", r"*\1*", texto, flags=re.DOTALL)
 
 
 # ─── 2. Memoria en Supabase ─────────────────────────────────────────
-def cargar_historial(telefono: str, limite: int = MAX_HISTORY_MESSAGES) -> list[dict]:
+def cargar_historial(telefono: str, limite: int = MAX_HISTORY_MESSAGES) -> list:
     try:
         res = (
             supabase.table("whatsapp_conversaciones")
@@ -122,7 +102,7 @@ def guardar_mensaje(telefono: str, role: str, content: str) -> None:
 def cargar_seguimiento_pendiente(telefono: str) -> Optional[dict]:
     """
     Busca un seguimiento pendiente para este telefono (viene de una
-    llamada de voz en la que Lola no pudo capturar un dato).
+    llamada de voz en la que Mara no pudo capturar un dato).
     """
     tel_limpio = _normalizar_telefono(telefono)
     if not tel_limpio:
@@ -160,12 +140,12 @@ def marcar_seguimiento_completado(seguimiento_id: str) -> None:
 def construir_contexto_cliente_recurrente(telefono: str) -> str:
     """
     Si el cliente tiene historial relevante, devuelve un bloque de contexto
-    para anadir al system prompt. Personaliza el saludo (issue #3).
-    Si no hay datos, devuelve cadena vacia.
+    para anadir al system prompt. Personaliza el saludo. Si no hay datos,
+    devuelve cadena vacia.
     """
-    from core.reservas import historial_cliente_resumen
+    from core.citas import historial_cliente_resumen
     info = historial_cliente_resumen(telefono)
-    if not info["es_recurrente"] and not info["reservas_futuras"]:
+    if not info["es_recurrente"] and not info["citas_futuras"]:
         return ""
 
     bloques = ["\n\n═══════════════════════════════════════════════════════════",
@@ -183,56 +163,49 @@ def construir_contexto_cliente_recurrente(telefono: str) -> str:
         n = info["num_visitas_pasadas"]
         ultima = info["ultima_visita"]
         if n == 1 and ultima:
+            est = ultima.get("estilista")
+            con_quien = f" con {est}" if est else ""
             bloques.append(
-                f"- CLIENTE RECURRENTE: ya estuvo 1 vez (el {ultima['fecha']}, "
-                f"{ultima['num_personas']} personas). Saludalo asi: "
-                f"\"¡Hola {nombre}! ¿Que tal? ¿Que necesitas hoy?\" o similar."
+                f"- CLIENTE RECURRENTE: ya estuvo 1 vez (el {ultima['fecha']}{con_quien}). "
+                f"Saludalo asi: \"¡Hola {nombre}! ¿Que tal? ¿En que te ayudo hoy?\" o similar."
             )
         elif n > 1 and ultima:
+            est = ultima.get("estilista")
+            con_quien = f" con {est}" if est else ""
             bloques.append(
                 f"- CLIENTE RECURRENTE: tiene {n} visitas previas. La ultima "
-                f"fue el {ultima['fecha']} ({ultima['num_personas']} personas). "
+                f"fue el {ultima['fecha']}{con_quien}. "
                 f"Saludalo asi: \"¡Hola {nombre}! ¿Que tal? ¿Otra vez por aqui?\" "
                 f"o similar. NO le tratas como cliente nuevo."
             )
         if ultima and ultima.get("alergias"):
             bloques.append(
-                f"- ALERGIAS conocidas: {ultima['alergias']}. "
-                f"Si va a reservar, puedes preguntar si siguen aplicando "
-                f"sin asumir que si automaticamente."
-            )
-        if ultima and ultima.get("ocasion_especial"):
-            bloques.append(
-                f"- Su ultima visita fue por: {ultima['ocasion_especial']}."
+                f"- ALERGIAS / SENSIBILIDADES conocidas: {ultima['alergias']}. "
+                f"Si va a agendar color/mechas, puedes confirmar si siguen "
+                f"aplicando sin asumir que si automaticamente."
             )
 
-    if info["reservas_futuras"]:
-        bloques.append("- TIENE RESERVA(S) ACTIVA(S):")
-        for r in info["reservas_futuras"]:
+    if info["citas_futuras"]:
+        bloques.append("- TIENE CITA(S) ACTIVA(S):")
+        for r in info["citas_futuras"]:
+            est = r.get("estilista") or "?"
             bloques.append(
-                f"    · {r['fecha']} a las {r['hora']}, "
-                f"{r['num_personas']} personas (id {r['id']})"
+                f"    · {r['fecha']} a las {r['hora_inicio']} con {est} "
+                f"(id {r['id']})"
             )
         if nombre:
             bloques.append(
                 f"  Mencionalas en tu primer mensaje usando el nombre "
                 f"{nombre}, ejemplo: \"Hola {nombre}, veo que tienes "
-                f"mesa el [fecha]. ¿Quieres modificarla, anularla, o "
-                f"vienes a otra cosa?\". Si pide nueva reserva, primero "
+                f"cita el [fecha]. ¿Quieres modificarla, anularla, o "
+                f"vienes a otra cosa?\". Si pide cita nueva, primero "
                 f"confirma si quiere modificar la existente o crear otra."
             )
         else:
             bloques.append(
-                "  Mencionalas en tu primer mensaje. Si pide nueva reserva, "
+                "  Mencionalas en tu primer mensaje. Si pide cita nueva, "
                 "primero confirma si quiere modificar la existente o crear otra."
             )
-
-    if info["tiene_no_show_reciente"]:
-        bloques.append(
-            "- ATENCION: tuvo un no-show en los ultimos 2 meses. NO menciones "
-            "esto al cliente, pero usa tono educadamente formal (no familiaridad "
-            "exagerada que pueda sonar incomoda)."
-        )
 
     bloques.append("═══════════════════════════════════════════════════════════")
     return "\n".join(bloques)
@@ -247,11 +220,12 @@ def construir_contexto_seguimiento(seguimiento: dict) -> str:
     datos_str = ", ".join(f"{k}: {v}" for k, v in datos.items() if v) or "(ninguno aun)"
 
     mapa_pregunta = {
-        "alergias": "las alergias o intolerancias del grupo",
-        "fecha_y_hora": "el dia y la hora de la reserva",
-        "num_personas": "el numero de comensales",
+        "servicio": "el servicio o servicios que quiere",
+        "fecha_y_hora": "el dia y la hora de la cita",
+        "estilista": "la preferencia de estilista",
+        "alergias": "las alergias a productos / sensibilidades",
         "confirmacion": "la confirmacion final de los datos",
-        "nombre": "el nombre completo para la reserva",
+        "nombre": "el nombre completo para la cita",
         "otro": "un dato adicional que falto",
     }
     que_falta = mapa_pregunta.get(pregunta, "un dato adicional")
@@ -260,7 +234,7 @@ def construir_contexto_seguimiento(seguimiento: dict) -> str:
         "\n\n═══════════════════════════════════════════════════════════\n"
         "CONTEXTO IMPORTANTE — HANDOFF DESDE LLAMADA TELEFONICA:\n"
         "═══════════════════════════════════════════════════════════\n"
-        f"Este cliente acaba de hablar por telefono con Lola (nuestra "
+        f"Este cliente acaba de hablar por telefono con Mara (nuestra "
         f"agente de voz). No se pudo capturar {que_falta} por voz, asi "
         f"que le hemos derivado aqui para terminar por texto.\n\n"
         f"DATOS QUE YA NOS DIO EN LA LLAMADA: {datos_str}\n"
@@ -271,7 +245,7 @@ def construir_contexto_seguimiento(seguimiento: dict) -> str:
         "- NO vuelvas a pedir los datos que ya tienes.\n"
         f"- Pide SOLO {que_falta}.\n"
         "- Cuando lo tengas, resume todos los datos y pide confirmacion "
-        "antes de llamar a reservar_mesa.\n"
+        "antes de llamar a agendar_cita.\n"
         "═══════════════════════════════════════════════════════════\n"
     )
 
@@ -281,41 +255,8 @@ router = APIRouter()
 
 
 def procesar_mensaje_wa(clave_sesion: str, texto: str, profile_name: str = "") -> str:
-    """
-    Logica de negocio del chatbot WhatsApp, INDEPENDIENTE del proveedor.
-    """
+    """Logica de negocio del chatbot WhatsApp, INDEPENDIENTE del proveedor."""
     log.info("De: %s | Nombre: %s | Texto: %s", clave_sesion, profile_name, texto)
-
-    # ─── 0a. Detectar si es respuesta a un recordatorio (issue #5) ─
-    reserva_recordada = reserva_con_recordatorio_reciente(clave_sesion)
-    if reserva_recordada:
-        respuesta = procesar_respuesta_recordatorio(reserva_recordada, texto)
-        if respuesta is not None:
-            log.info("Respuesta a recordatorio detectada: %s", respuesta[:80])
-            guardar_mensaje(clave_sesion, "user", texto)
-            guardar_mensaje(clave_sesion, "assistant", respuesta)
-            return respuesta
-        # Si la respuesta es texto libre, sigue al flujo normal del bot.
-
-    # ─── 0b. Detectar si es respuesta a oferta de lista de espera (#6) ─
-    candidato = candidato_con_oferta_reciente(clave_sesion)
-    if candidato:
-        respuesta = procesar_respuesta_oferta(candidato, texto)
-        if respuesta is not None:
-            log.info("Respuesta a oferta lista espera: %s", respuesta[:80])
-            guardar_mensaje(clave_sesion, "user", texto)
-            guardar_mensaje(clave_sesion, "assistant", respuesta)
-            return respuesta
-
-    # ─── 0c. Detectar si es respuesta a encuesta post-visita (#7) ──
-    reserva_encuesta = reserva_con_encuesta_reciente(clave_sesion)
-    if reserva_encuesta:
-        respuesta = procesar_respuesta_encuesta(reserva_encuesta, texto)
-        if respuesta is not None:
-            log.info("Respuesta a encuesta: %s", respuesta[:80])
-            guardar_mensaje(clave_sesion, "user", texto)
-            guardar_mensaje(clave_sesion, "assistant", respuesta)
-            return respuesta
 
     historial = cargar_historial(clave_sesion)
     log.info("Historial: %d mensajes previos", len(historial))
@@ -327,9 +268,6 @@ def procesar_mensaje_wa(clave_sesion: str, texto: str, profile_name: str = "") -
                  seguimiento.get("id"), seguimiento.get("pregunta_pendiente"))
         system_prompt_final = system_prompt_final + construir_contexto_seguimiento(seguimiento)
 
-    # Cliente recurrente / con reserva activa (issue #3): inyectar
-    # contexto para personalizar el saludo. clave_sesion en WA viene
-    # como "whatsapp:+34..." asi que se normaliza dentro de la funcion.
     contexto_recurrente = construir_contexto_cliente_recurrente(clave_sesion)
     if contexto_recurrente:
         log.info("Contexto cliente recurrente inyectado")
@@ -337,9 +275,6 @@ def procesar_mensaje_wa(clave_sesion: str, texto: str, profile_name: str = "") -
 
     mensajes = historial + [{"role": "user", "content": texto}]
 
-    # Multi-idioma (issue #9). Pasamos el historial para que nombres
-    # propios tipo "me llamo Marta Ruiz" no disparen cambios espurios
-    # a italiano (QA bug round 1).
     idioma_detectado = detectar_idioma(texto, historial=historial)
     bloque_idioma = bloque_idioma_para_prompt(idioma_detectado)
     if idioma_detectado != "es":
@@ -347,11 +282,11 @@ def procesar_mensaje_wa(clave_sesion: str, texto: str, profile_name: str = "") -
 
     reply_text = None
     tools_ok: set = set()
-    reservar_mesa_ok = False  # solo para marcar seguimiento como completado
+    agendar_cita_ok = False
 
     def _ejecutar_ciclo(mensajes_in: list, tools_ok_set: set, max_iter: int = 5):
         reply = None
-        nonlocal reservar_mesa_ok
+        nonlocal agendar_cita_ok
         for _ in range(max_iter):
             response = claude.messages.create(
                 model=MODEL,
@@ -372,8 +307,8 @@ def procesar_mensaje_wa(clave_sesion: str, texto: str, profile_name: str = "") -
                     resultado = ejecutar_tool(block.name, block.input, clave_sesion)
                     if _tool_ejecutada_ok(block.name, resultado):
                         tools_ok_set.add(block.name)
-                        if block.name == "reservar_mesa":
-                            reservar_mesa_ok = True
+                        if block.name == "agendar_cita":
+                            agendar_cita_ok = True
                     tool_results.append({
                         "type": "tool_result",
                         "tool_use_id": block.id,
@@ -391,11 +326,7 @@ def procesar_mensaje_wa(clave_sesion: str, texto: str, profile_name: str = "") -
                 "¿Puedes intentarlo de nuevo?"
             )
 
-        # GUARDRAIL anti-alucinacion con auto-retry (issues #20, #22).
-        # Pasamos `historial` (estado de la conversacion ANTES de este
-        # turno) para que el guardrail considere tools afirmadas en
-        # turnos previos y no dispare falsos positivos cuando el
-        # cliente pregunta de forma pasiva por algo ya hecho (#49).
+        # GUARDRAIL anti-alucinacion con auto-retry.
         tool_alucinada = detectar_alucinacion(reply_text, tools_ok, historial=historial)
         if tool_alucinada:
             log.warning("[GUARDRAIL WA] Alucinacion '%s'. Auto-retry. Reply original: %s",
@@ -408,7 +339,7 @@ def procesar_mensaje_wa(clave_sesion: str, texto: str, profile_name: str = "") -
                 reply_text = reply_text2
             else:
                 ejecutadas = ", ".join(tools_ok) or "ninguna"
-                log.warning("[GUARDRAIL WA] Auto-retry fallo. Esperada: %s. Ejecutadas: %s. Aplicando recovery.",
+                log.warning("[GUARDRAIL WA] Auto-retry fallo. Esperada: %s. Ejecutadas: %s.",
                             tool_alucinada, ejecutadas)
                 reply_text = reply_recovery_para(tool_alucinada)
 
@@ -417,7 +348,7 @@ def procesar_mensaje_wa(clave_sesion: str, texto: str, profile_name: str = "") -
         guardar_mensaje(clave_sesion, "user", texto)
         guardar_mensaje(clave_sesion, "assistant", reply_text)
 
-        if seguimiento and reservar_mesa_ok:
+        if seguimiento and agendar_cita_ok:
             marcar_seguimiento_completado(seguimiento["id"])
 
     except Exception as e:
@@ -445,7 +376,6 @@ async def whatsapp_webhook_twilio(
         texto=Body,
         profile_name=ProfileName,
     )
-    # Blindaje markdown: WhatsApp solo soporta asteriscos simples.
     reply_text = _normalizar_asteriscos_wa(reply_text)
 
     provider = TwilioProvider()
@@ -490,7 +420,6 @@ async def whatsapp_webhook_meta(request: Request):
         texto=entrante.texto,
         profile_name=entrante.profile_name,
     )
-    # Blindaje markdown: WhatsApp solo soporta asteriscos simples.
     reply_text = _normalizar_asteriscos_wa(reply_text)
 
     resultado_envio = meta.enviar(entrante.telefono, reply_text)
