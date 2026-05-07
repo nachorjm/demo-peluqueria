@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="Demo del sistema multicanal de IA de Alnora aplicado a un restaurante." />
+  <meta name="description" content="Demo del sistema multicanal de IA de Alnora aplicado a una peluqueria." />
   <meta name="robots" content="noindex" />
   <title>Demo del producto — Alnora IA</title>
 
@@ -13,14 +13,14 @@
 
   <style>
     :root {
-      --bg: #1A120B;
-      --bg-soft: #241A12;
-      --cream: #F7EEDF;
-      --cream-soft: #ECE1CF;
-      --accent: #C0392B;
+      --bg: #1A1612;
+      --bg-soft: #2A2028;
+      --cream: #F9ECEC;
+      --cream-soft: #F3DEDE;
+      --accent: #C87A8A;
       --gold: #D4A24C;
-      --text: #2A2118;
-      --muted: #6B5E4A;
+      --text: #3A2630;
+      --muted: #8A6B73;
       --card-bg: #FFFFFF;
       --border: rgba(0, 0, 0, 0.08);
     }
@@ -62,11 +62,11 @@
       font-size: 10px;
       letter-spacing: 0.22em;
       text-transform: uppercase;
-      color: rgba(247, 238, 223, 0.6);
+      color: rgba(249, 236, 236, 0.6);
       margin-top: -4px;
     }
     .topbar .vuelve a {
-      color: rgba(247, 238, 223, 0.85);
+      color: rgba(249, 236, 236, 0.85);
       font-size: 13px;
     }
     .topbar .vuelve a:hover { color: var(--gold); text-decoration: none; }
@@ -161,7 +161,7 @@
       width: 20px;
       height: 20px;
       background: var(--accent);
-      color: var(--cream);
+      color: #FFFFFF;
       border-radius: 50%;
       font-size: 11px;
       font-weight: 600;
@@ -172,7 +172,7 @@
     .canal .pasos code {
       font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
       font-size: 12.5px;
-      background: rgba(192, 57, 43, 0.08);
+      background: rgba(200, 122, 138, 0.12);
       color: var(--accent);
       padding: 1px 6px;
       border-radius: 3px;
@@ -181,7 +181,7 @@
       display: inline-block;
       padding: 11px 18px;
       background: var(--accent);
-      color: var(--cream);
+      color: #FFFFFF;
       border-radius: 4px;
       font-size: 13px;
       font-weight: 500;
@@ -189,13 +189,13 @@
       text-transform: uppercase;
       text-align: center;
     }
-    .canal .cta:hover { background: #A62E22; text-decoration: none; }
+    .canal .cta:hover { background: #B05D6F; text-decoration: none; }
     .canal .cta-ghost {
       background: transparent;
       color: var(--accent);
       border: 1px solid var(--accent);
     }
-    .canal .cta-ghost:hover { background: var(--accent); color: var(--cream); }
+    .canal .cta-ghost:hover { background: var(--accent); color: #FFFFFF; }
     .canal .nota {
       margin-top: 12px;
       font-size: 12px;
@@ -219,7 +219,7 @@
     .dueno-block p {
       max-width: 620px;
       margin-bottom: 20px;
-      color: rgba(247, 238, 223, 0.85);
+      color: rgba(249, 236, 236, 0.85);
       font-size: 15px;
     }
     .dueno-block ul {
@@ -230,7 +230,7 @@
     .dueno-block ul li {
       padding: 6px 0 6px 22px;
       position: relative;
-      color: rgba(247, 238, 223, 0.85);
+      color: rgba(249, 236, 236, 0.85);
       font-size: 14.5px;
     }
     .dueno-block ul li::before {
@@ -288,7 +288,7 @@
     /* FOOTER */
     footer {
       background: var(--bg);
-      color: rgba(247, 238, 223, 0.65);
+      color: rgba(249, 236, 236, 0.65);
       padding: 32px;
       text-align: center;
       font-size: 13px;
@@ -304,18 +304,18 @@
       <small>Demo del producto</small>
     </div>
     <div class="vuelve">
-      <a href="/" data-r-tpl="← Web pública de {nombre}">← Web pública del restaurante</a>
+      <a href="/" data-r-tpl="← Web publica de {nombre}">← Web publica del salon</a>
     </div>
   </div>
 
   <section class="hero">
     <span class="label">Demo en vivo</span>
     <h1>
-      Atiende reservas <em>24 horas</em><br/>
-      sin coger el teléfono
+      Atiende citas <em>24 horas</em><br/>
+      sin coger el telefono
     </h1>
-    <p class="intro" data-r-tpl="Esto es exactamente lo que ve un cliente final en {nombre}. Pruébalo en los 3 canales y mira cómo el dueño lo gestiona desde su panel.">
-      Esto es exactamente lo que ve un cliente final. Pruébalo en los 3 canales y mira cómo el dueño lo gestiona desde su panel.
+    <p class="intro" data-r-tpl="Esto es exactamente lo que ve una clienta de {nombre}. Pruebalo en los 3 canales y mira como la duenna lo gestiona desde su panel.">
+      Esto es exactamente lo que ve una clienta. Pruebalo en los 3 canales y mira como la duenna lo gestiona desde su panel.
     </p>
   </section>
 
@@ -327,83 +327,83 @@
       <div class="canal">
         <div class="icon">💬</div>
         <h2>Chat web</h2>
-        <p class="resumen">Embebido en la web del restaurante. El cliente reserva sin levantar el teléfono.</p>
+        <p class="resumen">Embebido en la web del salon. La clienta pide cita sin levantar el telefono.</p>
         <ol class="pasos">
-          <li>Abre la <a href="/" data-r-tpl="web pública de {nombre}">web pública</a> en otra pestaña.</li>
-          <li>Pulsa el botón redondo abajo a la derecha.</li>
-          <li>Escribe: <code>quiero reservar para 4 el viernes a las 21:00</code></li>
-          <li>Sigue la conversación: el bot pide los datos que faltan y confirma.</li>
+          <li>Abre la <a href="/" data-r-tpl="web publica de {nombre}">web publica</a> en otra pestana.</li>
+          <li>Pulsa el boton redondo abajo a la derecha.</li>
+          <li>Escribe: <code>quiero cita para corte y color el viernes</code></li>
+          <li>Sigue la conversacion: el bot pide los datos que faltan, asigna estilista y confirma.</li>
         </ol>
         <a href="/" class="cta">Probar el chat web →</a>
-        <div class="nota">Funciona en cualquier dispositivo. Idiomas detectados automáticamente.</div>
+        <div class="nota">Funciona en cualquier dispositivo. Idiomas detectados automaticamente.</div>
       </div>
 
       <!-- CANAL 2: WhatsApp -->
       <div class="canal">
         <div class="icon">📱</div>
         <h2>WhatsApp</h2>
-        <p class="resumen">El canal favorito de los clientes españoles. El bot atiende reservas, modifica y cancela por chat.</p>
+        <p class="resumen">El canal favorito de las clientas espanolas. El bot atiende citas, modifica y cancela por chat.</p>
         <ol class="pasos">
-          <li>Abre WhatsApp y guarda el número: <code data-wa-numero>+1 415 523 8886</code></li>
-          <li>Envía el mensaje: <code data-wa-keyword>join produce-go</code> (palabra clave del sandbox).</li>
-          <li>Cuando el bot te dé la bienvenida, escribe: <code>quiero reservar mesa</code></li>
-          <li>El bot guía la conversación igual que en el chat web.</li>
+          <li>Abre WhatsApp y guarda el numero: <code data-wa-numero>+1 415 523 8886</code></li>
+          <li>Envia el mensaje: <code data-wa-keyword>join produce-go</code> (palabra clave del sandbox).</li>
+          <li>Cuando el bot te de la bienvenida, escribe: <code>quiero pedir cita</code></li>
+          <li>El bot guia la conversacion igual que en el chat web.</li>
         </ol>
         <a href="#" data-wa-link class="cta">Abrir WhatsApp →</a>
-        <div class="nota">Modo sandbox de Twilio para la demo. En producción se usa un número propio del restaurante.</div>
+        <div class="nota">Modo sandbox de Twilio para la demo. En produccion se usa un numero propio del salon.</div>
       </div>
 
       <!-- CANAL 3: Voz -->
       <div class="canal">
         <div class="icon">📞</div>
         <h2>Llamada</h2>
-        <p class="resumen">El agente Lola atiende llamadas reales, hace reservas y deriva a humano cuando no puede resolver.</p>
+        <p class="resumen">El agente Mara atiende llamadas reales, agenda citas y deriva a humano cuando no puede resolver.</p>
         <ol class="pasos">
-          <li>Llama desde tu móvil al número: <code data-vapi-numero>(número aún no configurado — pídelo al comercial)</code></li>
-          <li>Saluda. Lola se presenta y pregunta qué necesitas.</li>
-          <li>Pídele reservar mesa. Conversación natural en español.</li>
+          <li>Llama desde tu movil al numero: <code data-vapi-numero>(numero aun no configurado — pidelo al comercial)</code></li>
+          <li>Saluda. Mara se presenta y pregunta que necesitas.</li>
+          <li>Pidele cita para un servicio concreto. Conversacion natural en espanol.</li>
           <li>Si no puede resolver algo, te ofrece pasarte por WhatsApp para terminar por texto.</li>
         </ol>
         <a href="#" data-vapi-link class="cta cta-ghost">Llamar al agente →</a>
-        <div class="nota">Voz Azure ES-ES. Funciona 24/7. En producción se conecta al número fijo del restaurante.</div>
+        <div class="nota">Voz Azure ES-ES. Funciona 24/7. En produccion se conecta al numero fijo del salon.</div>
       </div>
 
     </div>
 
     <!-- DUEÑO -->
     <div class="dueno-block">
-      <h2>Y el dueño lo ve aquí</h2>
-      <p>Mientras los clientes reservan por los 3 canales, el dueño del restaurante ve TODO en un único panel:</p>
+      <h2>Y la duenna lo ve aqui</h2>
+      <p>Mientras las clientas piden cita por los 3 canales, la duenna del salon ve TODO en un unico panel:</p>
       <ul>
-        <li>Calendario semanal y mensual con cada reserva codificada por canal.</li>
-        <li>Estadísticas: reservas/comensales por día, por turno, tasa de cancelación.</li>
-        <li>Sincronización con su Google Calendar / iPhone (botón "Sincronizar al móvil").</li>
-        <li>Email de aviso cada vez que entra, modifica o cancela una reserva.</li>
-        <li>Recordatorios automáticos por WhatsApp la noche anterior (reduce no-shows).</li>
+        <li>Calendario semanal y mensual con cada cita codificada por canal.</li>
+        <li>Estadisticas: citas por dia, por estilista, ingresos estimados, tasa de cancelacion.</li>
+        <li>Sincronizacion con su Google Calendar / iPhone (boton "Sincronizar al movil").</li>
+        <li>Email de aviso cada vez que entra, modifica o cancela una cita.</li>
+        <li>Acceso al historial de cada clienta (visitas previas, alergias a tintes, estilista preferido).</li>
       </ul>
       <div class="acciones">
-        <a href="/admin" class="btn-panel" target="_blank">Abrir el panel del dueño →</a>
+        <a href="/admin" class="btn-panel" target="_blank">Abrir el panel de la duenna →</a>
       </div>
-      <div class="nota" style="margin-top: 14px; color: rgba(247, 238, 223, 0.55); font-size: 12px;">
-        Pide la contraseña al comercial. Es la misma para toda la demo.
+      <div class="nota" style="margin-top: 14px; color: rgba(249, 236, 236, 0.55); font-size: 12px;">
+        Pide la contrasena al comercial. Es la misma para toda la demo.
       </div>
     </div>
 
-    <!-- POR QUÉ -->
+    <!-- POR QUE -->
     <section class="porque">
-      <h2>¿Por qué un restaurante quiere esto?</h2>
+      <h2>¿Por que un salon quiere esto?</h2>
       <div class="porque-grid">
         <div class="porque-item">
           <h3>Cero llamadas perdidas</h3>
-          <p>El agente Lola atiende a las 14:30 cuando estás emplatando. El cliente reserva en lugar de irse a la competencia.</p>
+          <p>El agente Mara atiende a las 11:30 cuando estas haciendo mechas. La clienta agenda en lugar de irse a la competencia.</p>
         </div>
         <div class="porque-item">
-          <h3>Menos no-shows</h3>
-          <p>Recordatorio automático WhatsApp la noche anterior. El cliente confirma o cancela. Mesa que se libera entra en lista de espera.</p>
+          <h3>Asignacion automatica</h3>
+          <p>El bot sabe que servicios hace cada estilista, busca el que tenga hueco y asigna sin solapamientos. Sin enredo de hojas y bolis.</p>
         </div>
         <div class="porque-item">
           <h3>Tiempo recuperado</h3>
-          <p>Reservas, modificaciones y cancelaciones se gestionan solas. Tu equipo se centra en cocinar y servir.</p>
+          <p>Citas, cambios y cancelaciones se gestionan solas. Tu equipo se centra en cortar, peinar y cuidar a las clientas.</p>
         </div>
       </div>
     </section>
@@ -412,7 +412,7 @@
 
   <footer>
     <p>
-      <strong style="color: var(--gold);">Alnora IA</strong> — Sistema multicanal de IA para restaurantes.
+      <strong style="color: var(--gold);">Alnora IA</strong> — Sistema multicanal de IA para salones y peluquerias.
     </p>
     <p style="margin-top: 8px;">
       ¿Preguntas? Escribe a <a href="mailto:gestionalnora@gmail.com">gestionalnora@gmail.com</a>
@@ -420,21 +420,20 @@
   </footer>
 
   <script>
-    // Personalizacion dinamica desde /api/restaurante.
-    // Reusa el patron data-r-tpl="texto {nombre} texto" del index.html.
-    // Numeros (WA, Vapi) se leen de variables JS expuestas por el endpoint
-    // /demo (que las inyecta como window.__DEMO_CONFIG).
+    // Personalizacion dinamica desde /api/salon. Reusa el patron data-r-tpl
+    // del index.html. Numeros (WA, Vapi) los inyecta el endpoint /demo
+    // como window.__DEMO_CONFIG.
     async function init() {
-      // 1) Datos del restaurante para textos dinamicos
+      // 1) Datos del salon para textos dinamicos
       try {
-        const res = await fetch("/api/restaurante");
+        const res = await fetch("/api/salon");
         if (res.ok) {
           const R = await res.json();
           document.querySelectorAll("[data-r-tpl]").forEach(el => {
             const tpl = el.getAttribute("data-r-tpl");
             el.textContent = tpl.replace(/\{(\w+)\}/g, (_, k) => R[k] ?? "");
           });
-          // Aplicar paleta del restaurante a la pagina demo
+          // Aplicar paleta del salon a la pagina demo
           const c = (R.landing && R.landing.colores) || (R.branding && R.branding.colores) || {};
           const root = document.documentElement;
           if (c.bg)     root.style.setProperty("--bg", c.bg);
@@ -453,7 +452,6 @@
       if (cfg.wa_keyword) {
         document.querySelectorAll("[data-wa-keyword]").forEach(el => el.textContent = cfg.wa_keyword);
       }
-      // Link "Abrir WhatsApp" con palabra clave pre-rellenada
       if (cfg.wa_numero) {
         const num = cfg.wa_numero.replace(/[^\d]/g, "");
         const texto = encodeURIComponent(cfg.wa_keyword || "");
@@ -466,11 +464,10 @@
         const numV = cfg.vapi_numero.replace(/[^\d+]/g, "");
         document.querySelectorAll("[data-vapi-link]").forEach(el => el.href = `tel:${numV}`);
       } else {
-        // Sin numero Vapi, deshabilitar link
         document.querySelectorAll("[data-vapi-link]").forEach(el => {
           el.style.opacity = "0.5";
           el.style.pointerEvents = "none";
-          el.textContent = "Pídelo al comercial";
+          el.textContent = "Pidelo al comercial";
         });
       }
     }
