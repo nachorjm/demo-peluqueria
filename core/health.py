@@ -40,12 +40,12 @@ def _ms_desde(t0: float) -> int:
 # ════════════════════════════════════════════════════════════════════
 
 def check_supabase() -> Dict:
-    """SELECT 1 row de reservas. Si tarda >3s o falla -> fail."""
+    """SELECT 1 row de citas. Si tarda >3s o falla -> fail."""
     t0 = time.perf_counter()
     try:
         from core.config import supabase
         # Limit 1 + select id minimal para ser rapido
-        supabase.table("reservas").select("id").limit(1).execute()
+        supabase.table("citas").select("id").limit(1).execute()
         return {"status": "ok", "latency_ms": _ms_desde(t0)}
     except Exception as e:
         return {
