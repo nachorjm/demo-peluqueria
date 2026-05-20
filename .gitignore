@@ -29,6 +29,9 @@ yarn-error.log*
 .env.*
 !.env.example
 
+# Artefactos de set-up local (prompts generados, IDs de Vapi, scripts puntuales)
+.setup-artifacts/
+
 # Logs y temporales
 *.log
 tmp/
